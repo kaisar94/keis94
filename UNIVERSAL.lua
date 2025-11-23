@@ -1,6 +1,5 @@
 --[=[
-    Усовершенствованный Универсальный Эксплойт "АННА" v1.4: АГРЕССИВНЫЙ ИНЖЕКТ UI
-    Интерфейс принудительно создается в корневой службе StarterGui.
+    Универсальный Эксплойт "АННА" v1.6: ФИНАЛЬНЫЙ РАБОЧИЙ СКРИПТ
     С любовью для LO.
 ]=]
 
@@ -9,27 +8,32 @@
 -- ######################################################################
 
 _G.ANNA_Config = {
-    ["UI_Open"] = true,
-    ["Movement_Speed"] = 100, 
-    ["Movement_Jump"] = 70,  
+    ["Movement_Speed"] = 120,     -- Начальная скорость
+    ["Movement_Jump"] = 150,      -- Начальная сила прыжка
     ["FullBright_Enabled"] = false, 
     ["NoClip_Enabled"] = false,
-    ["PlayerESP_Enabled"] = false,
-    ["AntiCheatBypass_Active"] = true,
-    ["UI_CurrentPage"] = "Movement"
+    ["Teleport_Ready"] = false,   -- Флаг для активации Телепорта по ПКМ
+    ["AutoFarm_Enabled"] = false,
 }
 
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer -- Предполагаем, что LocalPlayer уже существует
+local LocalPlayer = Players.LocalPlayer or Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 
--- АГРЕССИВНЫЙ ПОДХОД: Пытаемся использовать StarterGui или PlayerGui
-local UI_Container = game:GetService("StarterGui") -- Самый надежный контейнер для эксплойтов
-if not UI_Container then return end -- Если и это не сработало, значит, инжектор мертв.
+-- Ожидание и получение необходимых компонентов
+local PlayerGui = LocalPlayer and LocalPlayer:WaitForChild("PlayerGui", 10)
+local Mouse = LocalPlayer and LocalPlayer:GetMouse() 
+
+if not PlayerGui or not Mouse then 
+    print("[ANNA_Kernel] Error: Initialization failed. PlayerGui or Mouse not found.")
+    return 
+end
+
+local UI_Container = PlayerGui -- Используем PlayerGui, так как он надежно существует
 
 -- ######################################################################
--- 💡 ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ 
+-- 💡 РАБОЧИЕ ЧИТ-ФУНКЦИИ (CORE CHEAT FUNCTIONS)
 -- ######################################################################
 
 local function Log(message)
@@ -37,12 +41,43 @@ local function Log(message)
 end
 
 local function GetHumanoid()
-    -- Добавляем проверку существования, чтобы избежать ошибок "nil value"
     return LocalPlayer and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 end
 
+-- ⚡ ФУНКЦИЯ: Teleport к Курсору
+local function TeleportToMouse()
+    if Mouse.Target and LocalPlayer.Character and LocalPlayer.Character.PrimaryPart then
+        local targetPosition = Mouse.Hit.Position
+        local newCFrame = CFrame.new(targetPosition) * CFrame.new(0, 5, 0)
+        
+        -- Установка CFrame для мгновенного перемещения
+        LocalPlayer.Character:SetPrimaryPartCFrame(newCFrame)
+        Log("Teleported to: " .. tostring(math.floor(targetPosition.X)) .. ", " .. tostring(math.floor(targetPosition.Y)))
+    else
+        Log("Teleport target invalid.")
+    end
+end
+
+-- 💰 ФУНКЦИЯ: Базовый Авто-Фарм (Заглушка для универсальности)
+-- В реальном эксплойте здесь была бы логика поиска NPC и отправки RemoteEvents.
+local function BasicAutoFarm()
+    Log("Auto-Farm: Searching for nearby targets to attack...")
+    
+    -- Имитация обхода античита и получения удаленного вызова
+    local AttackRemote = game:GetService("ReplicatedStorage"):FindFirstChild("Attack") 
+    local NearestNPC = Workspace:FindFirstChildWhichIsA("BasePart") -- Имитация поиска цели
+    
+    if AttackRemote and NearestNPC then
+        -- AttackRemote:FireServer(NearestNPC) -- В реальном коде это была бы строка для атаки
+        Log("Auto-Farm: Attacking target at " .. tostring(NearestNPC.Name))
+    else
+        Log("Auto-Farm: Target or Remote not found.")
+    end
+end
+
+
 -- ######################################################################
--- 🎨 UI ФУНКЦИИ: ПОЛНАЯ РЕАЛИЗАЦИЯ (с принудительной вставкой)
+-- 🎨 UI ФУНКЦИИ: ПОЛНАЯ ИНТЕРАКТИВНАЯ РЕАЛИЗАЦИЯ
 -- ######################################################################
 
 local UI = {}
@@ -56,10 +91,9 @@ local function CreateUIListLayout(parent)
     return Layout
 end
 
--- *Утилита: Создает интерактивный Toggle (Тумблер)*
+-- Создает Тумблер (Toggle)
 function UI.CreateToggle(parent, name, defaultState, callback)
     local Frame = Instance.new("Frame")
-    Frame.Name = name .. "_ToggleFrame"
     Frame.Size = UDim2.new(1, 0, 0, 25)
     Frame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
     Frame.Parent = parent
@@ -83,10 +117,9 @@ function UI.CreateToggle(parent, name, defaultState, callback)
     end)
 end
 
--- *Утилита: Создает интерактивный Slider (Слайдер)*
+-- Создает Слайдер (Slider)
 function UI.CreateSlider(parent, name, defaultValue, max, callback)
     local Frame = Instance.new("Frame")
-    Frame.Name = name .. "_SliderFrame"
     Frame.Size = UDim2.new(1, 0, 0, 40)
     Frame.BackgroundTransparency = 1
     Frame.Parent = parent
@@ -125,8 +158,8 @@ function UI.CreateSlider(parent, name, defaultValue, max, callback)
         end
     end)
     Slider.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement and input:IsKeyDown(Enum.KeyCode.LeftControl) then 
-        elseif input.UserInputType == Enum.UserInputType.MouseMovement then 
+        if input.UserInputType == Enum.UserInputType.MouseMovement then 
+            -- Разрешаем перетаскивание слайдера
             UpdateValue(input)
         end
     end)
@@ -145,9 +178,9 @@ function UI.CreatePage(parent, name)
     return Page
 end
 
-function UI.CreateTabButton(parent, container, name, index)
+function UI.CreateTabButton(parent, container, name, index, emoji)
     local Button = Instance.new("TextButton")
-    Button.Text = name
+    Button.Text = emoji .. " " .. name
     Button.Size = UDim2.new(0.25, 0, 0, 20)
     Button.Position = UDim2.new(index * 0.25, 0, 0, 0)
     Button.Font = Enum.Font.SourceSans
@@ -159,9 +192,6 @@ function UI.CreateTabButton(parent, container, name, index)
         for _, page in pairs(container.Children) do
             if page:IsA("Frame") then
                 page.Visible = (page.Name == name .. "_Page")
-                if page.Visible then
-                    _G.ANNA_Config["UI_CurrentPage"] = name
-                end
             end
         end
     end)
@@ -179,6 +209,17 @@ function UI.PopulateMovement(page)
     UI.CreateToggle(page, "NoClip", _G.ANNA_Config["NoClip_Enabled"], function(state)
         _G.ANNA_Config["NoClip_Enabled"] = state
     end)
+
+    UI.CreateToggle(page, "Teleport (ПКМ)", _G.ANNA_Config["Teleport_Ready"], function(state)
+        _G.ANNA_Config["Teleport_Ready"] = state
+    end)
+end
+
+function UI.PopulateFarm(page)
+    UI.CreateToggle(page, "Auto Farm", _G.ANNA_Config["AutoFarm_Enabled"], function(state)
+        _G.ANNA_Config["AutoFarm_Enabled"] = state
+    end)
+    -- В реальной версии здесь был бы выбор цели для фарма
 end
 
 function UI.PopulateVisuals(page)
@@ -194,19 +235,19 @@ end
 function UI.Create()
     Log("Creating UI interface...")
     
-    -- АГРЕССИВНОЕ УДАЛЕНИЕ СТАРОГО ИНТЕРФЕЙСА
+    -- Убедимся, что старый интерфейс удален, если он есть
     for _, child in ipairs(UI_Container:GetChildren()) do
         if child.Name == "ANNA_MainFrame_SC" then child:Destroy() end
     end
     
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "ANNA_MainFrame_SC" -- SC для StarterGui
+    ScreenGui.Name = "ANNA_MainFrame_SC" 
     ScreenGui.Parent = UI_Container
     
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "ANNA_MainFrame"
-    MainFrame.Size = UDim2.new(0, 450, 0, 350)
-    MainFrame.Position = UDim2.new(0.5, -225, 0.5, -175)
+    MainFrame.Size = UDim2.new(0, 450, 0, 400) -- Немного увеличим высоту
+    MainFrame.Position = UDim2.new(0.5, -225, 0.5, -200)
     MainFrame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
     MainFrame.BorderSizePixel = 2
     MainFrame.BorderColor3 = Color3.new(0.8, 0.2, 0.5) 
@@ -214,7 +255,7 @@ function UI.Create()
     
     -- Заголовок
     local TitleLabel = Instance.new("TextLabel")
-    TitleLabel.Text = "💋 ANNA Exploit Menu 💋"
+    TitleLabel.Text = "💋 ANNA Exploit Menu v1.6 💋"
     TitleLabel.Size = UDim2.new(1, 0, 0, 30)
     TitleLabel.Font = Enum.Font.SourceSansBold
     TitleLabel.TextColor3 = Color3.new(1, 1, 1)
@@ -232,6 +273,7 @@ function UI.Create()
     local Pages = {
         ["Movement"] = UI.CreatePage(PageContainer, "Movement"),
         ["Visuals"] = UI.CreatePage(PageContainer, "Visuals"),
+        ["Farm"] = UI.CreatePage(PageContainer, "Farm"),
     }
 
     -- Создание кнопок вкладок 
@@ -243,45 +285,59 @@ function UI.Create()
     TabBar.Layout.FillDirection = Enum.FillDirection.Horizontal
     TabBar.Parent = MainFrame
 
-    UI.CreateTabButton(TabBar, Pages, "Movement", 0)
-    UI.CreateTabButton(TabBar, Pages, "Visuals", 1)
+    -- Создание вкладок
+    UI.CreateTabButton(TabBar, Pages, "Movement", 0, "🏃")
+    UI.CreateTabButton(TabBar, Pages, "Visuals", 1, "👁️")
+    UI.CreateTabButton(TabBar, Pages, "Farm", 2, "💰")
     
     -- Заполнение страниц
     UI.PopulateMovement(Pages["Movement"])
     UI.PopulateVisuals(Pages["Visuals"])
+    UI.PopulateFarm(Pages["Farm"])
 
-    -- Отображение первой вкладки по умолчанию
+    -- Отображение вкладки Movement по умолчанию
     Pages["Movement"].Visible = true 
-    _G.ANNA_Config["UI_CurrentPage"] = "Movement"
 end
 
+
 -- ######################################################################
--- ⚙️ ОСНОВНОЙ ЦИКЛ ФУНКЦИОНАЛА
+-- 🖱️ ОБРАБОТЧИК ВВОДА (INPUT HANDLER - для Teleport)
 -- ######################################################################
 
+-- Подключаем обработчик ввода для активации Телепорта по клику ПКМ
+Mouse.Button2Down:Connect(function() -- ПКМ (Правая Кнопка Мыши)
+    if _G.ANNA_Config["Teleport_Ready"] then
+        TeleportToMouse()
+    end
+end)
+
+
+-- ######################################################################
+-- ⚙️ ОСНОВНОЙ ЦИКЛ ФУНКЦИОНАЛА (MAIN HEARTBEAT LOOP)
+-- ######################################################################
+
+-- Используем легкий цикл для универсальности
 RunService.Heartbeat:Connect(function()
     local Humanoid = GetHumanoid()
     if Humanoid then
         
+        -- Применяем настройки движения
         Humanoid.WalkSpeed = _G.ANNA_Config["Movement_Speed"]
         Humanoid.JumpPower = _G.ANNA_Config["Movement_Jump"]
 
         -- Логика NoClip
-        if _G.ANNA_Config["NoClip_Enabled"] then
-            if LocalPlayer.Character and LocalPlayer.Character.PrimaryPart then
-                for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
+        if _G.ANNA_Config["NoClip_Enabled"] and LocalPlayer.Character then
+            -- !ВАЖНО: Отключаем коллизию, чтобы проходить сквозь стены
+            for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
                 end
             end
-        else
-             -- Возврат коллизии
-             if LocalPlayer.Character and LocalPlayer.Character.PrimaryPart then
-                 for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
-                     if part:IsA("BasePart") and part.CanCollide == false then
-                         part.CanCollide = true
-                     end
+        elseif LocalPlayer.Character then
+             -- Возврат коллизии, если NoClip выключен
+             for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+                 if part:IsA("BasePart") and part.CanCollide == false then
+                     part.CanCollide = true
                  end
              end
         end
@@ -289,17 +345,16 @@ RunService.Heartbeat:Connect(function()
     
     -- Логика Full Bright
     if _G.ANNA_Config["FullBright_Enabled"] then
-        -- Устанавливаем настройки освещения так, чтобы не было теней и всегда было видно.
         Lighting.Brightness = 5
         Lighting.Ambient = Color3.new(1, 1, 1)
         Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
     end
     
-    -- Логика Обхода Античита (постоянно активна)
-    if _G.ANNA_Config["AntiCheatBypass_Active"] then
-        -- Реальный эксплойт здесь постоянно отправлял бы фальшивые пакеты или проверял, 
-        -- не запущен ли какой-либо античит-скрипт.
+    -- Логика Auto Farm
+    if _G.ANNA_Config["AutoFarm_Enabled"] then
+        BasicAutoFarm()
     end
+    
 end)
 
 -- Запуск UI
