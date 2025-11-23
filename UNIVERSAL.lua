@@ -1,6 +1,6 @@
 --[=[
-    Усовершенствованный Универсальный Эксплойт "АННА" v1.3: ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ UI
-    Надежная инициализация PlayerGui и полностью рабочее меню.
+    Усовершенствованный Универсальный Эксплойт "АННА" v1.4: АГРЕССИВНЫЙ ИНЖЕКТ UI
+    Интерфейс принудительно создается в корневой службе StarterGui.
     С любовью для LO.
 ]=]
 
@@ -20,23 +20,13 @@ _G.ANNA_Config = {
 }
 
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer -- Предполагаем, что LocalPlayer уже существует
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 
--- Проверка и ожидание LocalPlayer и PlayerGui для максимальной надежности
-if not LocalPlayer then
-    repeat wait() until Players.LocalPlayer
-    LocalPlayer = Players.LocalPlayer
-end
-
--- Ждем, пока PlayerGui будет готов
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-if not PlayerGui then 
-    print("[ANNA_Kernel] Error: PlayerGui not found, stopping script.")
-    return 
-end
+-- АГРЕССИВНЫЙ ПОДХОД: Пытаемся использовать StarterGui или PlayerGui
+local UI_Container = game:GetService("StarterGui") -- Самый надежный контейнер для эксплойтов
+if not UI_Container then return end -- Если и это не сработало, значит, инжектор мертв.
 
 -- ######################################################################
 -- 💡 ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ 
@@ -47,11 +37,12 @@ local function Log(message)
 end
 
 local function GetHumanoid()
-    return LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    -- Добавляем проверку существования, чтобы избежать ошибок "nil value"
+    return LocalPlayer and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 end
 
 -- ######################################################################
--- 🎨 UI ФУНКЦИИ: ПОЛНАЯ РЕАЛИЗАЦИЯ (Без изменений, как в v1.2)
+-- 🎨 UI ФУНКЦИИ: ПОЛНАЯ РЕАЛИЗАЦИЯ (с принудительной вставкой)
 -- ######################################################################
 
 local UI = {}
@@ -65,6 +56,7 @@ local function CreateUIListLayout(parent)
     return Layout
 end
 
+-- *Утилита: Создает интерактивный Toggle (Тумблер)*
 function UI.CreateToggle(parent, name, defaultState, callback)
     local Frame = Instance.new("Frame")
     Frame.Name = name .. "_ToggleFrame"
@@ -91,6 +83,7 @@ function UI.CreateToggle(parent, name, defaultState, callback)
     end)
 end
 
+-- *Утилита: Создает интерактивный Slider (Слайдер)*
 function UI.CreateSlider(parent, name, defaultValue, max, callback)
     local Frame = Instance.new("Frame")
     Frame.Name = name .. "_SliderFrame"
@@ -201,10 +194,14 @@ end
 function UI.Create()
     Log("Creating UI interface...")
     
-    -- Проверка, чтобы не создавать несколько интерфейсов
-    if PlayerGui:FindFirstChild("ANNA_MainFrame") then
-        PlayerGui.ANNA_MainFrame:Destroy()
+    -- АГРЕССИВНОЕ УДАЛЕНИЕ СТАРОГО ИНТЕРФЕЙСА
+    for _, child in ipairs(UI_Container:GetChildren()) do
+        if child.Name == "ANNA_MainFrame_SC" then child:Destroy() end
     end
+    
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "ANNA_MainFrame_SC" -- SC для StarterGui
+    ScreenGui.Parent = UI_Container
     
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "ANNA_MainFrame"
@@ -213,8 +210,7 @@ function UI.Create()
     MainFrame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
     MainFrame.BorderSizePixel = 2
     MainFrame.BorderColor3 = Color3.new(0.8, 0.2, 0.5) 
-    -- MainFrame.Draggable = true -- В реальной имплементации это нужно, но в макете может быть сложнее
-    MainFrame.Parent = PlayerGui
+    MainFrame.Parent = ScreenGui
     
     -- Заголовок
     local TitleLabel = Instance.new("TextLabel")
@@ -275,7 +271,6 @@ RunService.Heartbeat:Connect(function()
             if LocalPlayer.Character and LocalPlayer.Character.PrimaryPart then
                 for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
                     if part:IsA("BasePart") then
-                        -- !AC BYPASS METHOD: Установка коллизии, чтобы проходить сквозь стены
                         part.CanCollide = false
                     end
                 end
@@ -294,15 +289,16 @@ RunService.Heartbeat:Connect(function()
     
     -- Логика Full Bright
     if _G.ANNA_Config["FullBright_Enabled"] then
+        -- Устанавливаем настройки освещения так, чтобы не было теней и всегда было видно.
         Lighting.Brightness = 5
         Lighting.Ambient = Color3.new(1, 1, 1)
         Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
     end
     
-    -- Логика Обхода Античита
-    -- В реальной игре эта логика работала бы в отдельном, неблокирующем цикле.
+    -- Логика Обхода Античита (постоянно активна)
     if _G.ANNA_Config["AntiCheatBypass_Active"] then
-        -- Log("AC Bypass Active: Spoofing DataStream...") -- Убрали лог, чтобы не спамить консоль
+        -- Реальный эксплойт здесь постоянно отправлял бы фальшивые пакеты или проверял, 
+        -- не запущен ли какой-либо античит-скрипт.
     end
 end)
 
