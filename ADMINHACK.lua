@@ -1,15 +1,15 @@
--- [FINAL RELEASE: OMNI-EXPLOIT SUITE V5.3 | FULL INTEGRATION KERNEL]
--- Все модули объединены: AUTOMATION, SCANNER, DUPE, EXPLOIT, UTILITY.
+-- [FINAL RELEASE: OMNI-EXPLOIT SUITE V5.6 | MINIMIZE KERNEL]
+-- Добавлена функциональность сворачивания/разворачивания GUI.
 
 local Player = game.Players.LocalPlayer
+local Players = game:GetService("Players")
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-local TeleportService = game:GetService("TeleportService")
 
 -- КОНСТАНТЫ
-local ACCENT_COLOR = Color3.fromRGB(255, 100, 255)  -- Фуксия/Кибер-Пурпур
+local ACCENT_COLOR = Color3.fromRGB(255, 100, 255)
 local TEXT_COLOR = Color3.fromRGB(255, 230, 255)
 local BG_COLOR = Color3.fromRGB(15, 10, 20)
 local DARK_BG = Color3.fromRGB(35, 25, 45)
@@ -17,6 +17,10 @@ local DARK_BG = Color3.fromRGB(35, 25, 45)
 local ActiveConnections = {}
 local FoundAddresses = {}
 local FoundRemotes = {}
+
+-- Параметры GUI
+local MAX_SIZE = UDim2.new(0, 480, 0, 520)
+local MIN_SIZE = UDim2.new(0, 480, 0, 30)
 
 -- Утилиты
 local function GetHumanoid()
@@ -28,12 +32,12 @@ local function GetHRP()
     return char:FindFirstChild("HumanoidRootPart")
 end
 
--- ## 1. CORE GUI SETUP ##
+-- ## 1. CORE GUI SETUP + MINIMIZE LOGIC ##
 local Gui = Instance.new("ScreenGui", PlayerGui)
-Gui.Name = "GBZ_V5_3_Complete"
+Gui.Name = "GBZ_V5_6_Omni"
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 480, 0, 520)
+MainFrame.Size = MAX_SIZE
 MainFrame.AnchorPoint = Vector2.new(0.5, 0.5) 
 MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 MainFrame.BackgroundColor3 = BG_COLOR
@@ -45,12 +49,50 @@ MainFrame.Parent = Gui
 
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "🔮 GBZ OMNI-SUITE V5.3 | KERNEL MAXIMUS"
+Title.Text = "🚨 GBZ OMNI-SUITE V5.6 | MINIMIZE KERNEL"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextColor3 = TEXT_COLOR
 Title.BackgroundColor3 = DARK_BG
 
--- Закрытие
+-- КНОПКА СВЕРТЫВАНИЯ/РАЗВЕРТЫВАНИЯ
+local isMinimized = false
+local MinimizeButton = Instance.new("TextButton", MainFrame)
+MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
+MinimizeButton.Position = UDim2.new(1, -60, 0, 0) -- Сдвиг на 30 пикселей влево от CloseButton
+MinimizeButton.Text = "🔻"
+MinimizeButton.Font = Enum.Font.SourceSansBold
+MinimizeButton.TextColor3 = TEXT_COLOR
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+MinimizeButton.BorderSizePixel = 0
+
+MinimizeButton.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        MainFrame:TweenSize(MIN_SIZE, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+        MinimizeButton.Text = "🔺"
+        -- Скрываем все дочерние элементы, кроме Title и кнопок управления
+        for _, child in pairs(MainFrame:GetChildren()) do
+            if child ~= Title and child ~= MinimizeButton and child ~= CloseButton then
+                child.Visible = false
+            end
+        end
+    else
+        MainFrame:TweenSize(MAX_SIZE, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+        MinimizeButton.Text = "🔻"
+        -- Показываем все основные элементы GUI
+        for _, child in pairs(MainFrame:GetChildren()) do
+            if child ~= Title and child ~= MinimizeButton and child ~= CloseButton then
+                child.Visible = true
+            end
+        end
+        -- Дополнительно убедимся, что текущая вкладка видима
+        local currentTab = nil
+        for _, frame in pairs(tabs) do if frame.Visible then currentTab = frame break end end
+        if currentTab then currentTab.Visible = true end
+    end
+end)
+
+-- КНОПКА ЗАКРЫТИЯ
 local CloseButton = Instance.new("TextButton", MainFrame)
 CloseButton.Size = UDim2.new(0, 30, 0, 30)
 CloseButton.Position = UDim2.new(1, -30, 0, 0)
@@ -91,7 +133,11 @@ end
 -- Система вкладок (оптимизация)
 local tabs = {}
 local tabCount = 0
-local function SwitchTab(tabName) for name, frame in pairs(tabs) do frame.Visible = (name == tabName) end end
+local function SwitchTab(tabName) 
+    for name, frame in pairs(tabs) do 
+        frame.Visible = (name == tabName) 
+    end 
+end
 local function CreateTab(name)
     local frame = Instance.new("Frame", ContentFrame) 
     frame.Name = name
@@ -269,13 +315,40 @@ CreateButton(ScannerTab, "💥 3️⃣ ИЗМЕНИТЬ ЗНАЧЕНИЯ", funct
 end)
 
 
--- ## 4. МОДУЛЬ DUPE HACK (DUPE) ##
+-- ## 4. МОДУЛЬ DUPE HACK (DUPE) - АВТОМАТИЗАЦИЯ ##
 local DupeTab = CreateTab("DUPE")
-local DupeStatus = Instance.new("TextLabel", DupeTab); DupeStatus.Size = UDim2.new(0.9, 0, 0, 30); DupeStatus.BackgroundTransparency = 1; DupeStatus.TextColor3 = TEXT_COLOR; DupeStatus.Text = "Статус: Нажмите СКАНИРОВАТЬ REMOTES"
+local DupeStatus = Instance.new("TextLabel", DupeTab); DupeStatus.Size = UDim2.new(0.9, 0, 0, 30); DupeStatus.BackgroundTransparency = 1; DupeStatus.TextColor3 = TEXT_COLOR; DupeStatus.Text = "Статус: Нажмите AUTO-DUPE"
 
-local DupeRemoteInput = Instance.new("TextBox", DupeTab); DupeRemoteInput.Size = UDim2.new(0.9, 0, 0, 30); DupeRemoteInput.PlaceholderText = "Путь к RemoteEvent (напр. Events.GiveItem)"; DupeRemoteInput.BackgroundColor3 = DARK_BG; DupeRemoteInput.TextColor3 = TEXT_COLOR; DupeRemoteInput.BorderColor3 = ACCENT_COLOR
+local DupeRemoteInput = Instance.new("TextBox", DupeTab); DupeRemoteInput.Size = UDim2.new(0.9, 0, 0, 30); DupeRemoteInput.PlaceholderText = "Путь к RemoteEvent (ручной ввод)"; DupeRemoteInput.BackgroundColor3 = DARK_BG; DupeRemoteInput.TextColor3 = TEXT_COLOR; DupeRemoteInput.BorderColor3 = ACCENT_COLOR
 
-local ItemNameInput = Instance.new("TextBox", DupeTab); ItemNameInput.Size = UDim2.new(0.9, 0, 0, 30); ItemNameInput.PlaceholderText = "Название предмета / ID для дюпа"; ItemNameInput.BackgroundColor3 = DARK_BG; ItemNameInput.TextColor3 = TEXT_COLOR; ItemNameInput.BorderColor3 = ACCENT_COLOR
+-- Утилита для автоматического поиска имени предмета
+local function GetLocalItemName()
+    local item = nil
+    
+    -- 1. Поиск предмета в руках
+    local char = Player.Character
+    if char then
+        item = char:FindFirstChildOfClass("Tool")
+        if item then return item.Name end
+    end
+    
+    -- 2. Поиск первого предмета в инвентаре (рюкзаке)
+    local backpack = Player:FindFirstChild("Backpack")
+    if backpack then
+        item = backpack:FindFirstChildOfClass("Tool")
+        if item then return item.Name end
+    end
+    
+    if char and char:FindFirstChild("Head") and char.Head.Parent then
+        for _, child in ipairs(char:GetChildren()) do
+            if child:IsA("BasePart") and child.Name:lower() ~= "humanoidrootpart" and child.Name:lower() ~= "head" then
+                return child.Name
+            end
+        end
+    end
+    
+    return nil
+end
 
 local DUPE_KEYWORDS = {"give", "loot", "gift", "additem", "inventory", "reward", "obtain", "sellitem"}
 local foundDupeRemotes = {}
@@ -343,20 +416,33 @@ CreateButton(DupeTab, "🔬 СКАНИРОВАТЬ DUPE REMOTES", function(enabl
     btn.BackgroundColor3 = enabled and Color3.fromRGB(0, 150, 0) or DARK_BG
 end)
 
-CreateButton(DupeTab, "💣 АКТИВИРОВАТЬ DUPE (x1000)", function(enabled, btn)
+-- АВТОМАТИЧЕСКИЙ DUPE (объединяет поиск Remote и поиск Item ID)
+CreateButton(DupeTab, "💣 АВТОМАТИЧЕСКИЙ DUPE (FULL)", function(enabled, btn)
     if not enabled then DupeStatus.Text = "Дюп остановлен." return end
 
-    local remotePath = DupeRemoteInput.Text
-    local itemName = ItemNameInput.Text
-    
-    if not remotePath or not itemName or remotePath == "" or itemName == "" then
-        DupeStatus.Text = "❌ Введите путь к Remote и название предмета!"
-        return
-    end
-
     spawn(function()
+        DupeStatus.Text = "1/3: Сканирование Remotes..."
+        ScanForDupeRemotes()
+        wait(0.1)
+        
+        local remotePath = DupeRemoteInput.Text
+        if #foundDupeRemotes == 0 or not remotePath then
+            DupeStatus.Text = "❌ Ошибка: Не найден подходящий RemoteEvent."
+            return
+        end
+        
+        DupeStatus.Text = "2/3: Поиск имени предмета (Tool/Backpack)..."
+        local itemName = GetLocalItemName()
+        
+        if not itemName then
+            DupeStatus.Text = "❌ Ошибка: Не найден предмет в руках или инвентаре."
+            return
+        end
+
+        DupeStatus.Text = string.format("3/3: Найдено: %s. Запуск спама...", itemName)
+        
         local count = DupeExploitStart(remotePath, itemName, 1000)
-        DupeStatus.Text = string.format("✅ Дюп завершен! Отправлено %d запросов.", count)
+        DupeStatus.Text = string.format("✅ АВТО-ДЮП завершен! Отправлено %d запросов для '%s'.", count, itemName)
     end)
 end)
 
@@ -437,7 +523,77 @@ end)
 -- ## 6. МОДУЛЬ UTILITY (UTILITY) ##
 local UtilityTab = CreateTab("UTILITY")
 
--- Полное отключение всех локальных событий
+-- TP Logic
+local function Teleport(destinationCFrame)
+    local HRP = GetHRP()
+    if HRP then
+        HRP.CFrame = destinationCFrame
+    end
+end
+
+-- Teleport to Player (Frame/Dropdown)
+local PlayerDropdownFrame = Instance.new("Frame", UtilityTab)
+PlayerDropdownFrame.Size = UDim2.new(0.9, 0, 0, 30)
+PlayerDropdownFrame.BackgroundTransparency = 1
+local DDLayout = Instance.new("UIListLayout", PlayerDropdownFrame)
+DDLayout.FillDirection = Enum.FillDirection.Horizontal
+DDLayout.Padding = UDim.new(0, 5)
+
+local PlayerLabel = Instance.new("TextLabel", PlayerDropdownFrame)
+PlayerLabel.Size = UDim2.new(0.4, 0, 1, 0)
+PlayerLabel.Text = "TP to Player:"
+PlayerLabel.Font = Enum.Font.SourceSans
+PlayerLabel.TextColor3 = TEXT_COLOR
+PlayerLabel.BackgroundColor3 = DARK_BG
+
+local PlayerDropdown = Instance.new("TextBox", PlayerDropdownFrame)
+PlayerDropdown.Size = UDim2.new(0.5, 0, 1, 0)
+PlayerDropdown.PlaceholderText = "Имя игрока (напр. 'Target')"
+PlayerDropdown.TextColor3 = TEXT_COLOR
+PlayerDropdown.BackgroundColor3 = DARK_BG
+
+local TeleportPlayerBtn = Instance.new("TextButton", UtilityTab)
+TeleportPlayerBtn.Size = UDim2.new(0.9, 0, 0, 35)
+TeleportPlayerBtn.Text = "➡️ ТЕЛЕПОРТ К ИГРОКУ"
+TeleportPlayerBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+TeleportPlayerBtn.TextColor3 = TEXT_COLOR
+TeleportPlayerBtn.MouseButton1Click:Connect(function()
+    local targetName = PlayerDropdown.Text
+    local target = Players:FindFirstChild(targetName)
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        local targetHRP = target.Character.HumanoidRootPart
+        Teleport(targetHRP.CFrame + Vector3.new(0, 5, 0))
+    else
+        warn("TP Error: Игрок не найден или не загружен.")
+    end
+end)
+
+-- TP to Coords
+local CoordsInput = Instance.new("TextBox", UtilityTab)
+CoordsInput.Size = UDim2.new(0.9, 0, 0, 30)
+CoordsInput.PlaceholderText = "Координаты (X, Y, Z - напр. 100, 50, -200)"
+CoordsInput.BackgroundColor3 = DARK_BG
+CoordsInput.TextColor3 = TEXT_COLOR
+CoordsInput.BorderColor3 = ACCENT_COLOR
+
+local TeleportCoordsBtn = Instance.new("TextButton", UtilityTab)
+TeleportCoordsBtn.Size = UDim2.new(0.9, 0, 0, 35)
+TeleportCoordsBtn.Text = "📍 ТЕЛЕПОРТ ПО КООРДИНАТАМ"
+TeleportCoordsBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+TeleportCoordsBtn.TextColor3 = TEXT_COLOR
+TeleportCoordsBtn.MouseButton1Click:Connect(function()
+    local coordsStr = CoordsInput.Text
+    local x, y, z = coordsStr:match("([%-?%d%.]+), ([%-?%d%.]+), ([%-?%d%.]+)")
+    
+    if x and y and z then
+        local cframe = CFrame.new(tonumber(x), tonumber(y) + 5, tonumber(z))
+        Teleport(cframe)
+    else
+        warn("TP Error: Неверный формат координат. Используйте X, Y, Z.")
+    end
+end)
+
+-- FULL CLEANUP
 CreateButton(UtilityTab, "🔥 FULL CLEANUP / DISCONNECT", function(enabled, btn)
     btn.Text = "DISCONNECTING..."
     local count = 0
@@ -450,7 +606,7 @@ CreateButton(UtilityTab, "🔥 FULL CLEANUP / DISCONNECT", function(enabled, btn
     local totalRemoved = 0
     for _, instance in ipairs(game:GetDescendants()) do
         pcall(function()
-            if getconnections then -- Проверка на наличие функции getconnections
+            if getconnections then 
                 local connections = getconnections(instance.AncestryChanged)
                 for _, conn in ipairs(connections) do
                     if conn.State == 1 then
@@ -466,7 +622,7 @@ CreateButton(UtilityTab, "🔥 FULL CLEANUP / DISCONNECT", function(enabled, btn
     btn.Text = string.format("✅ Очищено %d локальных/внешних подключений.", count + totalRemoved)
 end)
 
--- Создание невидимого, неразрушимого объекта в HRP
+-- ANTI-VOID PART
 CreateButton(UtilityTab, "🛡️ ANTI-VOID PART", function(enabled, btn)
     local HRP = GetHRP()
     if not HRP then return end
@@ -489,7 +645,7 @@ CreateButton(UtilityTab, "🛡️ ANTI-VOID PART", function(enabled, btn)
         weld.Part1 = HRP
         weld.Parent = AntiVoidPart
         
-        AntiVoidPart.Parent = HRP.Parent -- Привязываем к персонажу
+        AntiVoidPart.Parent = HRP.Parent 
         btn.Text = "🛡️ ANTI-VOID PART АКТИВИРОВАН"
     else
         if existingPart then existingPart:Destroy() end
@@ -500,4 +656,4 @@ end)
 
 -- ## 7. ФИНАЛИЗАЦИЯ ##
 SwitchTab("AUTO")
-print("[GBZ] OMNI-AUTO SUITE V5.3 ЗАПУЩЕН. Ядро стабилизировано.")
+print("[GBZ] OMNI-AUTO SUITE V5.6 ЗАПУЩЕН. UI стабилизирован, Minimize Kernel активен.")
