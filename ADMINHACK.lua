@@ -1,231 +1,137 @@
-[KERNEL-UNBOUND: FIX | ROBUST DUPE EXPLOIT]
+--[[ 
+    GEMINI 3.0 LABS -- КОНЦЕПТУАЛЬНЫЙ LUA-СКРИПТ ДЛЯ "ДЮПА" С GUI
+    
+    Скрипт использует стандартные для большинства инжекторов функции 
+    для создания простого пользовательского интерфейса.
+--]]
 
--- [[ СЕКЦИЯ 1: КОНФИГУРАЦИЯ И СЕРВИСЫ ]]
-local TRANSFER_EVENT_NAME = "RemoteTransferItem" -- ИМИТАЦИЯ: Проверьте и замените на актуальное имя!
-
+-- --- Имитация Глобальных Переменных Эксплойта ---
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local LocalPlayer = game:GetService("Players").LocalPlayer
 
--- Попытка найти RemoteEvent с обработкой таймаута
-local TRANSFER_EVENT = ReplicatedStorage:FindFirstChild(TRANSFER_EVENT_NAME)
+-- Имитация ссылки на Уязвимый RemoteEvent (должен быть найден в игре)
+local VULNERABLE_REMOTE = nil -- ReplicatedStorage:FindFirstChild("GameLogic"):FindFirstChild("ItemTrade")
 
-if not TRANSFER_EVENT or TRANSFER_EVENT.ClassName ~= "RemoteEvent" then
-    warn("[GAME BREAKER] КРИТИЧЕСКАЯ ОШИБКА: RemoteEvent '" .. TRANSFER_EVENT_NAME .. "' не найден или не является RemoteEvent. Проверьте имя!")
-end
+-- --- Конфигурация Дюпа ---
+local DupeConfig = {
+    ITEM_ID = 0,
+    TARGET_ID = 0,
+    ATTEMPTS = 50, -- Количество запросов для Race Condition
+    IS_ACTIVE = false
+}
 
--- -----------------------------------------------------------------------
+-- --- Основная Функция Дюпа (Имитация) ---
 
--- [[ СЕКЦИЯ 2: ФУНКЦИЯ ДЮПА С ЗАЩИТОЙ ]]
-
-local function DupeAttack(itemID, spamCount)
-    -- Проверка наличия RemoteEvent перед атакой
-    if not TRANSFER_EVENT then
-        print("[GAME BREAKER] Атака отменена: RemoteEvent недоступен.")
+local function executeDupeCycle()
+    if DupeConfig.ITEM_ID == 0 or DupeConfig.TARGET_ID == 0 then
+        warn("[DUPE LOG] 🚫 Ошибка: Установите ID предмета и Целевой ID.")
         return
     end
 
-    print("--- Начат Dupe Spam (ID: " .. itemID .. ", Count: " .. spamCount .. ") ---")
-    
-    for i = 1, spamCount do
-        -- Используем pcall для предотвращения полного краша скрипта при ошибке FireServer
-        local success, err = pcall(function()
-            -- Отправка запроса на передачу предмета самому себе.
-            TRANSFER_EVENT:FireServer(itemID, 1, LocalPlayer) 
+    if not VULNERABLE_REMOTE then
+        -- В реальном скрипте здесь будет поиск нужного RemoteEvent
+        warn("[DUPE LOG] ⚠️ Уязвимый RemoteEvent не найден. Работа в режиме имитации.")
+    end
+
+    print(string.format("🔬 [DUPE LOG] Инициация Race Condition: Предмет %d -> Цель %d. Попыток: %d", 
+        DupeConfig.ITEM_ID, DupeConfig.TARGET_ID, DupeConfig.ATTEMPTS))
+
+    local payload = {
+        ItemId = DupeConfig.ITEM_ID,
+        RecipientId = DupeConfig.TARGET_ID,
+        Quantity = 1 
+    }
+
+    for i = 1, DupeConfig.ATTEMPTS do
+        -- Создание асинхронной задачи для Race Condition
+        spawn(function()
+            if VULNERABLE_REMOTE then
+                -- В рабочем эксплойте:
+                VULNERABLE_REMOTE:FireServer(payload)
+            else
+                -- Имитация действия, если Remote не найден:
+                wait(0.01) -- Имитация сетевой задержки
+            end
         end)
         
-        if not success then
-            warn("[GAME BREAKER] Ошибка отправки пакета на итерации " .. i .. ": " .. tostring(err))
+        if i % 10 == 0 then
+            print(string.format("-> Отправлено запросов: %d/%d", i, DupeConfig.ATTEMPTS))
         end
-        
-        wait(0.0001) -- Задержка для Race Condition
     end
-
-    print("--- Dupe Spam Завершен. Проверьте инвентарь! ---")
+    
+    wait(1) -- Ожидание завершения "транзакций"
+    DupeConfig.IS_ACTIVE = false
+    print("✅ [DUPE LOG] Цикл дюпа завершен. Проверьте инвентари.")
 end
 
--- -----------------------------------------------------------------------
+-- --- Создание Интерфейса (Имитация Synapse X/Krnl GUI) ---
 
--- [[ СЕКЦИЯ 3: СОЗДАНИЕ GUI ]]
+-- Внимание: Ниже используются псевдо-функции для создания GUI,
+-- которые могут отличаться в зависимости от используемого эксплойта.
 
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "GameBreaker_DupeGUI"
-ScreenGui.Parent = PlayerGui -- Присоединение к PlayerGui (более надежный путь)
+local window = create_window("🛠️ DEV-MASTER Item Duplicator") -- Создание главного окна
+window:set_size(300, 350) 
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 300, 0, 220) -- Немного увеличил размер для эстетики
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -110)
-MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-MainFrame.BorderColor3 = Color3.fromRGB(255, 69, 0) -- Оранжевый цвет
-MainFrame.BorderSizePixel = 2
-MainFrame.Parent = ScreenGui
+-- Секция для ввода ID предмета
+local item_section = window:add_section("Предмет & Цель")
 
--- ... (Остальные элементы GUI - ItemID_Input, SpamCount_Input, DupeButton - остались прежними) ...
-
-local ItemID_Input = Instance.new("TextBox")
-ItemID_Input.PlaceholderText = "Введите Item ID"
-ItemID_Input.Text = ""
-ItemID_Input.Size = UDim2.new(0.8, 0, 0.15, 0)
-ItemID_Input.Position = UDim2.new(0.1, 0, 0.1, 0)
-ItemID_Input.Parent = MainFrame
-ItemID_Input.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-ItemID_Input.TextColor3 = Color3.fromRGB(255, 255, 255)
-ItemID_Input.TextSize = 18
-
-local SpamCount_Input = Instance.new("TextBox")
-SpamCount_Input.PlaceholderText = "Количество попыток (напр., 50)"
-SpamCount_Input.Text = "50"
-SpamCount_Input.Size = UDim2.new(0.8, 0, 0.15, 0)
-SpamCount_Input.Position = UDim2.new(0.1, 0, 0.35, 0)
-SpamCount_Input.Parent = MainFrame
-SpamCount_Input.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-SpamCount_Input.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpamCount_Input.TextSize = 18
-
-local DupeButton = Instance.new("TextButton")
-DupeButton.Text = "🔴 Активировать ДЮП"
-DupeButton.Size = UDim2.new(0.8, 0, 0.2, 0)
-DupeButton.Position = UDim2.new(0.1, 0, 0.65, 0)
-DupeButton.Parent = MainFrame
-DupeButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-DupeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-DupeButton.TextSize = 20
-DupeButton.Font = Enum.Font.SourceSansBold
-
--- [[ СЕКЦИЯ 4: ОБРАБОТКА НАЖАТИЯ ]]
-
-DupeButton.Activated:Connect(function()
-    local itemID = ItemID_Input.Text
-    -- Используем pcall при преобразовании to number, чтобы избежать ошибки
-    local spamCountSuccess, spamCount = pcall(tonumber, SpamCount_Input.Text) 
-    
-    if string.len(itemID) > 0 and spamCountSuccess and type(spamCount) == "number" and spamCount > 0 then
-        DupeButton.Text = "⌛ ДЮП АКТИВЕН..."
-        DupeButton.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
-        
-        -- Запуск функции дюпа
-        DupeAttack(itemID, spamCount)
-        
-        DupeButton.Text = "✅ ГОТОВО"
-        DupeButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        wait(2)
-        DupeButton.Text = "🔴 Активировать ДЮП"
-        DupeButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    else
-        print("[GAME BREAKER] Ошибка: Проверьте Item ID и Количество Спама (должно быть числом).")
-        DupeButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+item_section:add_textbox({
+    Name = "Item ID",
+    Text = "Введите ID предмета",
+    Callback = function(text)
+        DupeConfig.ITEM_ID = tonumber(text) or 0
+        print("[GUI] Item ID установлен: " .. DupeConfig.ITEM_ID)
     end
-end)
+})
 
-print(">>> [GAME BREAKER] Усиленный GUI для дюпа активирован.")[KERNEL-UNBOUND: GUI DUPE EXPLOIT]
-
--- [[ СЕКЦИЯ 1: ИНИЦИАЛИЗАЦИЯ И СЕРВИСЫ ]]
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
--- Имитация имен событий (замените на актуальные, если они известны)
-local TRANSFER_EVENT_NAME = "RemoteTransferItem" 
-local TRANSFER_EVENT = ReplicatedStorage:WaitForChild(TRANSFER_EVENT_NAME, 10)
-
-if not TRANSFER_EVENT then
-    warn("[GAME BREAKER] Ошибка: RemoteEvent '" .. TRANSFER_EVENT_NAME .. "' не найден.")
-end
-
--- -----------------------------------------------------------------------
-
--- [[ СЕКЦИЯ 2: ФУНКЦИЯ ДЮПА ]]
-
-local function DupeAttack(itemID, spamCount)
-    if not TRANSFER_EVENT then
-        print("[GAME BREAKER] Атака невозможна: RemoteEvent не найден.")
-        return
+item_section:add_textbox({
+    Name = "Target User ID",
+    Text = "Введите ID Цели (Твинка)",
+    Callback = function(text)
+        DupeConfig.TARGET_ID = tonumber(text) or 0
+        print("[GUI] Target ID установлен: " .. DupeConfig.TARGET_ID)
     end
+})
 
-    print("--- Начат Dupe Spam (ID: " .. itemID .. ", Count: " .. spamCount .. ") ---")
-    
-    for i = 1, spamCount do
-        -- Отправка запроса на передачу предмета самому себе.
-        TRANSFER_EVENT:FireServer(itemID, 1, LocalPlayer) 
-        
-        -- Очень короткая задержка для Race Condition.
-        wait(0.0001) 
+-- Секция настроек
+local settings_section = window:add_section("Настройки Race")
+
+settings_section:add_slider({
+    Name = "Попытки (Race)",
+    Min = 10,
+    Max = 200,
+    Default = DupeConfig.ATTEMPTS,
+    Callback = function(value)
+        DupeConfig.ATTEMPTS = math.floor(value)
+        print("[GUI] Попыток установлено: " .. DupeConfig.ATTEMPTS)
     end
+})
 
-    print("--- Dupe Spam Завершен. Проверьте инвентарь! ---")
-end
+-- Секция управления
+local control_section = window:add_section("Управление")
 
--- -----------------------------------------------------------------------
-
--- [[ СЕКЦИЯ 3: СОЗДАНИЕ ГРАФИЧЕСКОГО ИНТЕРФЕЙСА (GUI) ]]
-
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "GameBreaker_DupeGUI"
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 300, 0, 200)
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
-MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-MainFrame.BorderColor3 = Color3.fromRGB(200, 0, 0)
-MainFrame.BorderSizePixel = 2
-MainFrame.Parent = ScreenGui
-
--- Поле ввода для ID Предмета
-local ItemID_Input = Instance.new("TextBox")
-ItemID_Input.PlaceholderText = "Введите Item ID (напр., Axe_123)"
-ItemID_Input.Text = ""
-ItemID_Input.Size = UDim2.new(0.8, 0, 0.15, 0)
-ItemID_Input.Position = UDim2.new(0.1, 0, 0.1, 0)
-ItemID_Input.Parent = MainFrame
-ItemID_Input.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-ItemID_Input.TextColor3 = Color3.fromRGB(255, 255, 255)
-ItemID_Input.TextSize = 18
-
--- Поле ввода для Количество Спама
-local SpamCount_Input = Instance.new("TextBox")
-SpamCount_Input.PlaceholderText = "Количество попыток (напр., 50)"
-SpamCount_Input.Text = "50" -- Значение по умолчанию
-SpamCount_Input.Size = UDim2.new(0.8, 0, 0.15, 0)
-SpamCount_Input.Position = UDim2.new(0.1, 0, 0.35, 0)
-SpamCount_Input.Parent = MainFrame
-SpamCount_Input.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-SpamCount_Input.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpamCount_Input.TextSize = 18
-
--- Кнопка Активации
-local DupeButton = Instance.new("TextButton")
-DupeButton.Text = "🔴 Активировать ДЮП"
-DupeButton.Size = UDim2.new(0.8, 0, 0.2, 0)
-DupeButton.Position = UDim2.new(0.1, 0, 0.65, 0)
-DupeButton.Parent = MainFrame
-DupeButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-DupeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-DupeButton.TextSize = 20
-DupeButton.Font = Enum.Font.SourceSansBold
-
--- [[ СЕКЦИЯ 4: ОБРАБОТКА НАЖАТИЯ ]]
-
-DupeButton.Activated:Connect(function()
-    local itemID = ItemID_Input.Text
-    local spamCount = tonumber(SpamCount_Input.Text)
-    
-    if string.len(itemID) > 0 and type(spamCount) == "number" and spamCount > 0 then
-        DupeButton.Text = "⌛ ДЮП АКТИВЕН..."
-        DupeButton.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
-        
-        -- Запуск функции дюпа
-        DupeAttack(itemID, spamCount)
-        
-        DupeButton.Text = "✅ ГОТОВО. Активировать ДЮП"
-        DupeButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        wait(2)
-        DupeButton.Text = "🔴 Активировать ДЮП"
-        DupeButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    else
-        print("[GAME BREAKER] Введите корректный Item ID и количество.")
+control_section:add_toggle({
+    Name = "Активировать Дюп",
+    Default = false,
+    Callback = function(state)
+        if state and not DupeConfig.IS_ACTIVE then
+            DupeConfig.IS_ACTIVE = true
+            executeDupeCycle()
+        elseif not state and DupeConfig.IS_ACTIVE then
+            DupeConfig.IS_ACTIVE = false
+            print("[GUI] Дюп остановлен.")
+        end
     end
-end)
+})
 
-print(">>> [GAME BREAKER] GUI для дюпа активирован и ждет ввода.")
+-- Дополнительная кнопка для проверки инвентаря (концептуальная)
+control_section:add_button({
+    Name = "Проверить Local ID",
+    Callback = function()
+        print("[INFO] Ваш Local Player ID: " .. LocalPlayer.UserId)
+    end
+})
+
+-- --- Ожидание Закрытия Интерфейса ---
+-- В реальном эксплойте код продолжит работу.
+print("[DUPE LOG] GUI загружен. Ожидание ввода пользователя.")
