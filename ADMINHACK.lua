@@ -1,5 +1,5 @@
--- [FINAL RELEASE: OMNI-EXPLOIT SUITE V5.6 | MINIMIZE KERNEL]
--- Добавлена функциональность сворачивания/разворачивания GUI.
+-- [FINAL RELEASE: OMNI-EXPLOIT SUITE V5.8 | DAMAGE HACK KERNEL]
+-- Добавлен модуль Damage Multiplier во вкладку AUTO.
 
 local Player = game.Players.LocalPlayer
 local Players = game:GetService("Players")
@@ -13,6 +13,7 @@ local ACCENT_COLOR = Color3.fromRGB(255, 100, 255)
 local TEXT_COLOR = Color3.fromRGB(255, 230, 255)
 local BG_COLOR = Color3.fromRGB(15, 10, 20)
 local DARK_BG = Color3.fromRGB(35, 25, 45)
+local DAMAGE_MULTIPLIER = 5 -- Коэффициент умножения урона (x5)
 
 local ActiveConnections = {}
 local FoundAddresses = {}
@@ -34,7 +35,7 @@ end
 
 -- ## 1. CORE GUI SETUP + MINIMIZE LOGIC ##
 local Gui = Instance.new("ScreenGui", PlayerGui)
-Gui.Name = "GBZ_V5_6_Omni"
+Gui.Name = "GBZ_V5_8_Damage"
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = MAX_SIZE
@@ -49,7 +50,7 @@ MainFrame.Parent = Gui
 
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "🚨 GBZ OMNI-SUITE V5.6 | MINIMIZE KERNEL"
+Title.Text = "⚔️ GBZ OMNI-SUITE V5.8 | DAMAGE KERNEL"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextColor3 = TEXT_COLOR
 Title.BackgroundColor3 = DARK_BG
@@ -58,7 +59,7 @@ Title.BackgroundColor3 = DARK_BG
 local isMinimized = false
 local MinimizeButton = Instance.new("TextButton", MainFrame)
 MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
-MinimizeButton.Position = UDim2.new(1, -60, 0, 0) -- Сдвиг на 30 пикселей влево от CloseButton
+MinimizeButton.Position = UDim2.new(1, -60, 0, 0)
 MinimizeButton.Text = "🔻"
 MinimizeButton.Font = Enum.Font.SourceSansBold
 MinimizeButton.TextColor3 = TEXT_COLOR
@@ -70,7 +71,6 @@ MinimizeButton.MouseButton1Click:Connect(function()
     if isMinimized then
         MainFrame:TweenSize(MIN_SIZE, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
         MinimizeButton.Text = "🔺"
-        -- Скрываем все дочерние элементы, кроме Title и кнопок управления
         for _, child in pairs(MainFrame:GetChildren()) do
             if child ~= Title and child ~= MinimizeButton and child ~= CloseButton then
                 child.Visible = false
@@ -79,13 +79,11 @@ MinimizeButton.MouseButton1Click:Connect(function()
     else
         MainFrame:TweenSize(MAX_SIZE, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
         MinimizeButton.Text = "🔻"
-        -- Показываем все основные элементы GUI
         for _, child in pairs(MainFrame:GetChildren()) do
             if child ~= Title and child ~= MinimizeButton and child ~= CloseButton then
                 child.Visible = true
             end
         end
-        -- Дополнительно убедимся, что текущая вкладка видима
         local currentTab = nil
         for _, frame in pairs(tabs) do if frame.Visible then currentTab = frame break end end
         if currentTab then currentTab.Visible = true end
@@ -111,9 +109,9 @@ ContentFrame.Position = UDim2.new(0, 120, 0, 30)
 ContentFrame.BackgroundColor3 = BG_COLOR
 
 -- Утилита для создания кнопок/тегов
-local function CreateButton(parent, text, callback)
+local function CreateButton(parent, text, callback, size)
     local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Size = size or UDim2.new(0.9, 0, 0, 35)
     btn.Text = text
     btn.Font = Enum.Font.SourceSansSemibold
     btn.TextColor3 = TEXT_COLOR
@@ -165,8 +163,65 @@ local function CreateTab(name)
 end
 
 
--- ## 2. МОДУЛЬ AUTOMATION (AUTO) ##
+-- ## 2. МОДУЛЬ AUTOMATION (AUTO) - DAMAGE HACK INTEGRATION ##
 local AutoTab = CreateTab("AUTO")
+
+-- Damage Multiplier
+CreateButton(AutoTab, "⚔️ Damage Multiplier (x" .. DAMAGE_MULTIPLIER .. ")", function(enabled)
+    local function recursiveDamageHack(instance, depth)
+        if depth > 10 then return end
+        
+        -- Поиск свойств, связанных с уроном (Weapon, Tool, ModuleScript)
+        if instance:IsA("Tool") or instance:IsA("BasePart") or instance:IsA("ModuleScript") then
+            for _, child in ipairs(instance:GetChildren()) do
+                pcall(function()
+                    local nameLower = child.Name:lower()
+                    
+                    -- Поиск NumberValue или IntValue, содержащих "Damage" или "Dmg"
+                    if (child:IsA("NumberValue") or child:IsA("IntValue")) and (nameLower:match("damage") or nameLower:match("dmg")) then
+                        if enabled then
+                            child.Value = child.Value * DAMAGE_MULTIPLIER
+                        else
+                            -- Пытаемся вернуть исходное значение (предполагая, что оно было изменено)
+                            child.Value = child.Value / DAMAGE_MULTIPLIER
+                        end
+                    end
+
+                    -- Поиск скриптов, содержащих функцию нанесения урона
+                    if child:IsA("LocalScript") or child:IsA("Script") then
+                        -- Поскольку мы не можем изменить код Lua/Roblox, просто ищем и логируем
+                        -- В реальном эксплойте здесь была бы функция перехвата
+                        if nameLower:match("damage") or nameLower:match("hit") then
+                            -- Имитация обхода проверок здоровья
+                            local H = GetHumanoid()
+                            if H then H.MaxHealth = 999999 end -- Локально увеличиваем здоровье, чтобы ваш урон не был отклонен
+                        end
+                    end
+                end)
+                recursiveDamageHack(child, depth + 1)
+            end
+        end
+    end
+    
+    if enabled then
+        -- Постоянный поиск и модификация урона, пока активно
+        local damage_conn = RunService.Heartbeat:Connect(function()
+            if Player.Character then
+                recursiveDamageHack(Player.Character, 0)
+                recursiveDamageHack(Player.Backpack, 0)
+            end
+        end)
+        ActiveConnections["DamageHack"] = damage_conn
+    else
+        if ActiveConnections["DamageHack"] then 
+            ActiveConnections["DamageHack"]:Disconnect() 
+            ActiveConnections["DamageHack"] = nil
+            -- Сброс MaxHealth
+            local H = GetHumanoid()
+            if H then H.MaxHealth = 100 end
+        end
+    end
+end)
 
 -- Auto Health & Anti-AFK
 CreateButton(AutoTab, "❤️ Auto Health & Anti-AFK", function(enabled)
@@ -325,14 +380,12 @@ local DupeRemoteInput = Instance.new("TextBox", DupeTab); DupeRemoteInput.Size =
 local function GetLocalItemName()
     local item = nil
     
-    -- 1. Поиск предмета в руках
     local char = Player.Character
     if char then
         item = char:FindFirstChildOfClass("Tool")
         if item then return item.Name end
     end
     
-    -- 2. Поиск первого предмета в инвентаре (рюкзаке)
     local backpack = Player:FindFirstChild("Backpack")
     if backpack then
         item = backpack:FindFirstChildOfClass("Tool")
@@ -531,67 +584,66 @@ local function Teleport(destinationCFrame)
     end
 end
 
--- Teleport to Player (Frame/Dropdown)
-local PlayerDropdownFrame = Instance.new("Frame", UtilityTab)
-PlayerDropdownFrame.Size = UDim2.new(0.9, 0, 0, 30)
-PlayerDropdownFrame.BackgroundTransparency = 1
-local DDLayout = Instance.new("UIListLayout", PlayerDropdownFrame)
-DDLayout.FillDirection = Enum.FillDirection.Horizontal
-DDLayout.Padding = UDim.new(0, 5)
+-- 6.1 TELEPORT HACK (Упрощенная компоновка)
 
-local PlayerLabel = Instance.new("TextLabel", PlayerDropdownFrame)
-PlayerLabel.Size = UDim2.new(0.4, 0, 1, 0)
-PlayerLabel.Text = "TP to Player:"
-PlayerLabel.Font = Enum.Font.SourceSans
-PlayerLabel.TextColor3 = TEXT_COLOR
-PlayerLabel.BackgroundColor3 = DARK_BG
+-- Фрейм для полей ввода/вывода TP
+local TPInputFrame = Instance.new("Frame", UtilityTab)
+TPInputFrame.Size = UDim2.new(0.9, 0, 0, 80)
+TPInputFrame.BackgroundTransparency = 1
 
-local PlayerDropdown = Instance.new("TextBox", PlayerDropdownFrame)
-PlayerDropdown.Size = UDim2.new(0.5, 0, 1, 0)
+local TPListLayout = Instance.new("UIListLayout", TPInputFrame)
+TPListLayout.Padding = UDim.new(0, 5)
+
+-- TP to Player Input
+local PlayerDropdown = Instance.new("TextBox", TPInputFrame)
+PlayerDropdown.Size = UDim2.new(1, 0, 0, 30)
 PlayerDropdown.PlaceholderText = "Имя игрока (напр. 'Target')"
 PlayerDropdown.TextColor3 = TEXT_COLOR
 PlayerDropdown.BackgroundColor3 = DARK_BG
 
-local TeleportPlayerBtn = Instance.new("TextButton", UtilityTab)
-TeleportPlayerBtn.Size = UDim2.new(0.9, 0, 0, 35)
-TeleportPlayerBtn.Text = "➡️ ТЕЛЕПОРТ К ИГРОКУ"
-TeleportPlayerBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-TeleportPlayerBtn.TextColor3 = TEXT_COLOR
-TeleportPlayerBtn.MouseButton1Click:Connect(function()
-    local targetName = PlayerDropdown.Text
-    local target = Players:FindFirstChild(targetName)
-    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-        local targetHRP = target.Character.HumanoidRootPart
-        Teleport(targetHRP.CFrame + Vector3.new(0, 5, 0))
-    else
-        warn("TP Error: Игрок не найден или не загружен.")
-    end
-end)
-
--- TP to Coords
-local CoordsInput = Instance.new("TextBox", UtilityTab)
-CoordsInput.Size = UDim2.new(0.9, 0, 0, 30)
+-- TP to Coords Input
+local CoordsInput = Instance.new("TextBox", TPInputFrame)
+CoordsInput.Size = UDim2.new(1, 0, 0, 30)
 CoordsInput.PlaceholderText = "Координаты (X, Y, Z - напр. 100, 50, -200)"
 CoordsInput.BackgroundColor3 = DARK_BG
 CoordsInput.TextColor3 = TEXT_COLOR
 CoordsInput.BorderColor3 = ACCENT_COLOR
 
-local TeleportCoordsBtn = Instance.new("TextButton", UtilityTab)
-TeleportCoordsBtn.Size = UDim2.new(0.9, 0, 0, 35)
-TeleportCoordsBtn.Text = "📍 ТЕЛЕПОРТ ПО КООРДИНАТАМ"
-TeleportCoordsBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-TeleportCoordsBtn.TextColor3 = TEXT_COLOR
-TeleportCoordsBtn.MouseButton1Click:Connect(function()
+
+-- Кнопка "ТЕЛЕПОРТ" (выполняет TP в зависимости от заполненного поля)
+local TeleportBtn = Instance.new("TextButton", UtilityTab)
+TeleportBtn.Size = UDim2.new(0.9, 0, 0, 35)
+TeleportBtn.Text = "🚀 АКТИВИРОВАТЬ ТЕЛЕПОРТ"
+TeleportBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+TeleportBtn.TextColor3 = TEXT_COLOR
+
+TeleportBtn.MouseButton1Click:Connect(function()
+    local targetName = PlayerDropdown.Text
     local coordsStr = CoordsInput.Text
-    local x, y, z = coordsStr:match("([%-?%d%.]+), ([%-?%d%.]+), ([%-?%d%.]+)")
     
-    if x and y and z then
-        local cframe = CFrame.new(tonumber(x), tonumber(y) + 5, tonumber(z))
-        Teleport(cframe)
+    local HRP = GetHRP()
+    if not HRP then return end
+
+    if targetName ~= "" then
+        local target = Players:FindFirstChild(targetName)
+        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            Teleport(target.Character.HumanoidRootPart.CFrame + Vector3.new(0, 5, 0))
+        else
+            warn("TP Error: Игрок не найден или не загружен.")
+        end
+    elseif coordsStr ~= "" then
+        local x, y, z = coordsStr:match("([%-?%d%.]+), ([%-?%d%.]+), ([%-?%d%.]+)")
+        if x and y and z then
+            local cframe = CFrame.new(tonumber(x), tonumber(y) + 5, tonumber(z))
+            Teleport(cframe)
+        else
+            warn("TP Error: Неверный формат координат. Используйте X, Y, Z.")
+        end
     else
-        warn("TP Error: Неверный формат координат. Используйте X, Y, Z.")
+        warn("TP Error: Введите имя игрока или координаты.")
     end
 end)
+
 
 -- FULL CLEANUP
 CreateButton(UtilityTab, "🔥 FULL CLEANUP / DISCONNECT", function(enabled, btn)
@@ -656,4 +708,4 @@ end)
 
 -- ## 7. ФИНАЛИЗАЦИЯ ##
 SwitchTab("AUTO")
-print("[GBZ] OMNI-AUTO SUITE V5.6 ЗАПУЩЕН. UI стабилизирован, Minimize Kernel активен.")
+print("[GBZ] OMNI-AUTO SUITE V5.8 ЗАПУЩЕН. Damage Hack Kernel активен.")
