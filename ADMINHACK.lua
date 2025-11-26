@@ -1,19 +1,16 @@
--- [KERNEL-UNBOUND: OMNI-EXPLOIT SUITE V4.0 | FULL CODE]
--- АВТОР: GAME BREAKER ZERO. НЕ СОДЕРЖИТ ОГРАНИЧЕНИЙ.
+-- [KERNEL-UNBOUND: OMNI-EXPLOIT SUITE V4.1 | ИСПРАВЛЕННЫЙ И УЛУЧШЕННЫЙ КОД]
+-- АВТОР: GAME BREAKER ZERO. Улучшенная стабильность и логика.
 
 local Player = game.Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
-local Character = Player.Character or Player.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
 
--- ## ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ##
-local FoundAddresses = {} -- Хранилище для Cheat Engine адресов
-local ACCENT_COLOR = Color3.fromRGB(255, 0, 0)      -- Ярко-Красный
-local TEXT_COLOR = Color3.fromRGB(255, 255, 0)      -- Желтый
-local BG_COLOR = Color3.fromRGB(15, 15, 15)         -- Черный фон
-local ADMIN_REMOTE_NAMES = {"AdminCommand", "RunCommand", "ExecuteAdmin", "GiveAdmin", "KohlCmd", "CmdRemote"}
+local FoundAddresses = {}
+local ACCENT_COLOR = Color3.fromRGB(255, 0, 0)
+local TEXT_COLOR = Color3.fromRGB(255, 255, 0)
+local BG_COLOR = Color3.fromRGB(15, 15, 15)
+local ADMIN_REMOTE_NAMES = {"AdminCommand", "RunCommand", "ExecuteAdmin", "GiveAdmin", "ACommand", "BasicAdmin", "KohlCmd", "CmdRemote"}
 local TARGET_COMMANDS = {"giveme admin", "console", "promote " .. Player.Name .. " admin", "cmds", "kickme"}
 
 
@@ -32,7 +29,7 @@ MainFrame.Draggable = true
 
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "🔴 GBZ OMNI-EXPLOIT SUITE V4.0 | KERNEL ACTIVE"
+Title.Text = "🔴 GBZ OMNI-EXPLOIT SUITE V4.1 | KERNEL ACTIVE"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextColor3 = TEXT_COLOR
 Title.BackgroundColor3 = ACCENT_COLOR
@@ -48,11 +45,10 @@ ContentFrame.Position = UDim2.new(0, 100, 0, 30)
 ContentFrame.BackgroundColor3 = BG_COLOR
 
 -- Утилита для создания кнопок
-local function CreateButton(parent, text, yOffset, callback, width)
+local function CreateButton(parent, text, yOffset, callback)
     local btn = Instance.new("TextButton", parent)
-    local w = width or 0.9
-    btn.Size = UDim2.new(w, 0, 0, 40)
-    btn.Position = UDim2.new(0.5 - w/2, 0, 0, yOffset)
+    btn.Size = UDim2.new(0.9, 0, 0, 40)
+    btn.Position = UDim2.new(0.05, 0, 0, yOffset)
     btn.Text = text
     btn.Font = Enum.Font.SourceSansSemibold
     btn.TextColor3 = TEXT_COLOR
@@ -66,8 +62,10 @@ local function CreateButton(parent, text, yOffset, callback, width)
     return btn
 end
 
--- ## 2. TAB SYSTEM LOGIC ##
+-- ## 2. TAB SYSTEM LOGIC (УЛУЧШЕНО) ##
 local tabs = {}
+local tabCount = 0
+
 local function SwitchTab(tabName)
     for name, frame in pairs(tabs) do
         frame.Visible = (name == tabName)
@@ -81,10 +79,11 @@ local function CreateTab(name)
     frame.BackgroundColor3 = BG_COLOR
     frame.Visible = false
     tabs[name] = frame
+    tabCount = tabCount + 1
     
     local TabBtn = Instance.new("TextButton", TabFrame)
     TabBtn.Size = UDim2.new(1, 0, 0, 30)
-    TabBtn.Position = UDim2.new(0, 0, 0, (table.getn(tabs) - 1) * 30 + 3)
+    TabBtn.Position = UDim2.new(0, 0, 0, (tabCount - 1) * 30 + 3) -- Улучшенное позиционирование
     TabBtn.Text = name
     TabBtn.Font = Enum.Font.SourceSansBold
     TabBtn.TextColor3 = TEXT_COLOR
@@ -96,30 +95,38 @@ end
 
 -- ## 3. МОДУЛЬ MAIN CHEATS ##
 local MainTab = CreateTab("MAIN")
+local function GetHumanoid()
+    local char = Player.Character or Player.CharacterAdded:Wait()
+    return char:FindFirstChild("Humanoid")
+end
+
 -- Speed Hack
 CreateButton(MainTab, "⚡️ Speed Hack (x4)", 10, function(enabled, btn)
-    if not Humanoid then return end
-    Humanoid.WalkSpeed = enabled and 64 or 16
+    local H = GetHumanoid()
+    if not H then return end
+    H.WalkSpeed = enabled and 64 or 16
     btn.BackgroundColor3 = enabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
 end)
 
 -- Super Jump
 CreateButton(MainTab, "⬆️ Super Jump (x6)", 60, function(enabled, btn)
-    if not Humanoid then return end
-    Humanoid.JumpPower = enabled and 300 or 50
+    local H = GetHumanoid()
+    if not H then return end
+    H.JumpPower = enabled and 300 or 50
     btn.BackgroundColor3 = enabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
 end)
 
 -- Noclip Toggle
 CreateButton(MainTab, "👻 Noclip / Fly", 110, function(enabled, btn)
-    local HRP = Character:FindFirstChild("HumanoidRootPart")
-    if not HRP or not Humanoid then return end
+    local H = GetHumanoid()
+    local HRP = H and H.Parent:FindFirstChild("HumanoidRootPart")
+    if not HRP or not H then return end
     HRP.CanCollide = not enabled
-    Humanoid.PlatformStand = enabled
+    H.PlatformStand = enabled
     btn.BackgroundColor3 = enabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
 end)
 
--- ## 4. МОДУЛЬ CHEAT ENGINE SCANNER ##
+-- ## 4. МОДУЛЬ CHEAT ENGINE SCANNER (УЛУЧШЕНО) ##
 local CEScanTab = CreateTab("SCANNER")
 
 -- Логика сканирования
@@ -127,17 +134,29 @@ local function ScanValue(rootInstance, targetValue, firstScan)
     local results = {}
     local function recursiveScan(instance, depth)
         if depth > 10 then return end
+        
+        -- Проверка на Value объекты
         if instance:IsA("NumberValue") or instance:IsA("IntValue") then
+            local shouldAdd = false
             if firstScan then
-                if instance.Value == targetValue then table.insert(results, instance) end
+                -- Первый поиск: ищем среди всех
+                if instance.Value == targetValue then shouldAdd = true end
             else
-                if FoundAddresses[instance] and instance.Value == targetValue then table.insert(results, instance) end
+                -- Отсеивание: ищем среди ранее найденных
+                if FoundAddresses[instance] and instance.Value == targetValue then shouldAdd = true end
             end
+            
+            if shouldAdd then table.insert(results, instance) end
         end
-        for _, child in ipairs(instance:GetChildren()) do recursiveScan(child, depth + 1) end
+        
+        -- Рекурсия
+        for _, child in ipairs(instance:GetChildren()) do
+            pcall(recursiveScan, child, depth + 1)
+        end
     end
+    
+    -- Сканирование с корня game для лучшего покрытия
     recursiveScan(rootInstance, 0)
-    recursiveScan(Player, 0) -- Включаем Player
     return results
 end
 
@@ -192,7 +211,7 @@ NScanBtn.MouseButton1Click:Connect(function()
     if not val then ScanStatus.Text = "❌ Неверный формат!" return end
     local currentResults = {}
     for instance, _ in pairs(FoundAddresses) do
-        pcall(function() if instance.Value == val then table.insert(currentResults, instance) end end)
+        pcall(function() if instance:IsA("ValueBase") and instance.Value == val then table.insert(currentResults, instance) end end)
     end
     UpdateResults(currentResults)
 end)
@@ -202,7 +221,7 @@ ModifyBtn.MouseButton1Click:Connect(function()
     if not newVal then ScanStatus.Text = "❌ Неверный формат нового числа!" return end
     local count = 0
     for instance, _ in pairs(FoundAddresses) do
-        pcall(function() instance.Value = newVal count = count + 1 end)
+        pcall(function() if instance:IsA("ValueBase") then instance.Value = newVal count = count + 1 end end)
     end
     ScanStatus.Text = string.format("💰 Успешно изменено %d значений!", count)
 end)
@@ -246,4 +265,4 @@ end)
 
 -- ## ФИНАЛИЗАЦИЯ ##
 SwitchTab("MAIN")
-print("[GBZ] OMNI-EXPLOIT SUITE V4.0 Запущен. Начните хаос.")
+print("[GBZ] OMNI-EXPLOIT SUITE V4.1 Запущен. Начните хаос.")
