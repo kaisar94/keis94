@@ -1,3 +1,6 @@
+-- [KERNEL-UNBOUND: OMNI-EXPLOIT SUITE V5.0 | ПОЛНЫЙ И СТАБИЛЬНЫЙ КОД]
+-- АВТОР: GAME BREAKER ZERO. UI СТАБИЛИЗИРОВАН ЧЕРЕЗ UIListLayout.
+
 local Player = game.Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,8 +14,9 @@ end
 -- ЦВЕТОВАЯ СХЕМА (Cyberpunk)
 local ACCENT_COLOR = Color3.fromRGB(0, 150, 255)  -- Голубой
 local TEXT_COLOR = Color3.fromRGB(200, 255, 255)  -- Светло-голубой
-local BG_COLOR = Color3.fromRGB(18, 18, 25)      -- Почти черный/темно-синий
-local DARK_BG = Color3.fromRGB(30, 30, 45)       -- Темный фон для элементов
+local BG_COLOR = Color3.fromRGB(18, 18, 25)        -- Почти черный/темно-синий
+local DARK_BG = Color3.fromRGB(30, 30, 45)         -- Темный фон для элементов
+local SUCCESS_COLOR = Color3.fromRGB(0, 100, 0)    -- Зеленый для успеха
 
 local FoundAddresses = {}
 local ADMIN_REMOTE_NAMES = {"AdminCommand", "RunCommand", "ExecuteAdmin", "GiveAdmin", "ACommand", "BasicAdmin", "KohlCmd", "CmdRemote"}
@@ -25,7 +29,7 @@ Gui.Name = "GBZ_V5_Exploit"
 
 local MainFrame = Instance.new("Frame", Gui)
 MainFrame.Size = UDim2.new(0, 450, 0, 420)
-MainFrame.AnchorPoint = Vector2.new(0.5, 0.5) 
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)  
 MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 MainFrame.BackgroundColor3 = BG_COLOR
 MainFrame.BorderColor3 = ACCENT_COLOR
@@ -43,7 +47,7 @@ Title.BackgroundColor3 = DARK_BG
 -- КНОПКА ЗАКРЫТИЯ
 local CloseButton = Instance.new("TextButton", MainFrame)
 CloseButton.Size = UDim2.new(0, 30, 0, 30)
-CloseButton.Position = UDim2.new(1, -30, 0, 0) 
+CloseButton.Position = UDim2.new(1, -30, 0, 0)  
 CloseButton.Text = "❌"
 CloseButton.Font = Enum.Font.SourceSansBold
 CloseButton.TextColor3 = TEXT_COLOR
@@ -61,12 +65,12 @@ ContentFrame.Size = UDim2.new(1, -100, 1, -30)
 ContentFrame.Position = UDim2.new(0, 100, 0, 30)
 ContentFrame.BackgroundColor3 = BG_COLOR
 
-local tabOrderCounter = {} -- Для отслеживания порядка элементов в каждом табе
 
--- Утилита для создания кнопок (для UIListLayout)
-local function CreateButton(parent, text, callback)
-    local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(0.9, 0, 0, 35)
+-- Утилита для создания кнопок (для UIListLayout) - ИСПРАВЛЕНО
+local function CreateButton(parent, text, callback, isToggle)
+    local btn = Instance.new("TextButton")
+    btn.Parent = parent
+    btn.Size = UDim2.new(0.9, 0, 0, 35) -- Пропорциональная ширина, фиксированная высота
     btn.Text = text
     btn.Font = Enum.Font.SourceSansSemibold
     btn.TextColor3 = TEXT_COLOR
@@ -74,15 +78,14 @@ local function CreateButton(parent, text, callback)
     btn.BorderColor3 = ACCENT_COLOR
     btn.BorderSizePixel = 1
     
-    -- *** ИСПРАВЛЕНИЕ: Установка LayoutOrder для стабильности UIListLayout ***
-    local tabName = parent.Name
-    tabOrderCounter[tabName] = (tabOrderCounter[tabName] or 0) + 1
-    btn.LayoutOrder = tabOrderCounter[tabName]
-    -- **********************************************************************
-    
     local enabled = false
     btn.MouseButton1Click:Connect(function()
-        enabled = not enabled
+        if isToggle then -- Если это кнопка-переключатель
+            enabled = not enabled
+            -- Визуальная обратная связь для кнопок-переключателей
+            btn.BackgroundColor3 = enabled and SUCCESS_COLOR or DARK_BG
+        end
+        
         callback(enabled, btn)
     end)
     return btn
@@ -97,7 +100,7 @@ local function SwitchTab(tabName)
 end
 
 local function CreateTab(name)
-    local frame = Instance.new("Frame", ContentFrame) 
+    local frame = Instance.new("Frame", ContentFrame)  
     frame.Name = name
     frame.Size = UDim2.new(1, 0, 1, 0)
     frame.BackgroundColor3 = BG_COLOR
@@ -105,29 +108,21 @@ local function CreateTab(name)
     tabs[name] = frame
     tabCount = tabCount + 1
     
-    -- Инициализация счетчика порядка для этого таба
-    tabOrderCounter[name] = 0 
-    
     -- UIListLayout ДЛЯ СТАБИЛЬНОСТИ
     local Layout = Instance.new("UIListLayout", frame)
-    Layout.Padding = UDim.new(0, 8) 
+    Layout.Padding = UDim.new(0, 8)  
     Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     Layout.SortOrder = Enum.SortOrder.LayoutOrder
-    Layout.FillDirection = Enum.FillDirection.Vertical -- Явно указать направление
     
-    -- *** ИСПРАВЛЕНИЕ: УДАЛЕН НЕОБХОДИМЫЙ "pad" - ИСПОЛЬЗУЕМ Padding Layout'а ***
-    -- local pad = Instance.new("Frame", frame) 
-    -- pad.Size = UDim2.new(1, 0, 0, 5)
-    -- pad.BackgroundTransparency = 1
+    -- Добавление верхнего отступа
+    local pad = Instance.new("Frame", frame)
+    pad.Size = UDim2.new(1, 0, 0, 5)
+    pad.BackgroundTransparency = 1
     
     local TabBtn = Instance.new("TextButton", TabFrame)
     TabBtn.Size = UDim2.new(1, 0, 0, 30)
-    
-    -- *** ИСПРАВЛЕНИЕ: Вместо расчета Position вручную, используем UIListLayout для TabFrame ***
-    -- Если бы TabFrame использовал UIListLayout, этот код был бы не нужен. 
-    -- Но для простоты (как в оригинале) оставляем расчет Position.
+    -- ИСПРАВЛЕНИЕ: МЕСТОПОЛОЖЕНИЕ КНОПКИ ВКЛАДКИ
     TabBtn.Position = UDim2.new(0, 0, 0, (tabCount - 1) * 30 + 3)
-    
     TabBtn.Text = name
     TabBtn.Font = Enum.Font.SourceSansBold
     TabBtn.TextColor3 = TEXT_COLOR
@@ -137,50 +132,63 @@ local function CreateTab(name)
     return frame
 end
 
+
 -- ## 3. МОДУЛЬ MAIN CHEATS ##
 local MainTab = CreateTab("MAIN")
--- Speed Hack (LayoutOrder 1)
+-- Speed Hack
 CreateButton(MainTab, "⚡️ Speed Hack (x4)", function(enabled, btn)
     local H = GetHumanoid()
     if not H then return end
     H.WalkSpeed = enabled and 64 or 16
-    btn.BackgroundColor3 = enabled and Color3.fromRGB(0, 100, 0) or DARK_BG
-end)
--- Super Jump (LayoutOrder 2)
+end, true) -- true = isToggle
+-- Super Jump
 CreateButton(MainTab, "⬆️ Super Jump (x6)", function(enabled, btn)
     local H = GetHumanoid()
     if not H then return end
     H.JumpPower = enabled and 300 or 50
-    btn.BackgroundColor3 = enabled and Color3.fromRGB(0, 100, 0) or DARK_BG
-end)
--- Noclip Toggle (LayoutOrder 3)
+end, true) -- true = isToggle
+-- Noclip Toggle
 CreateButton(MainTab, "👻 Noclip / Fly", function(enabled, btn)
     local H = GetHumanoid()
     local HRP = H and H.Parent:FindFirstChild("HumanoidRootPart")
     if not HRP or not H then return end
     HRP.CanCollide = not enabled
     H.PlatformStand = enabled
-    btn.BackgroundColor3 = enabled and Color3.fromRGB(0, 100, 0) or DARK_BG
-end)
+end, true) -- true = isToggle
 
 
 -- ## 4. МОДУЛЬ CHEAT ENGINE SCANNER ##
 local CEScanTab = CreateTab("SCANNER")
 local FoundAddresses = {}
 local function ScanValue(rootInstance, targetValue, firstScan)
-    local results = {}; local function recursiveScan(instance, depth) if depth > 10 then return end if instance:IsA("NumberValue") or instance:IsA("IntValue") then local shouldAdd = false; if firstScan then if instance.Value == targetValue then shouldAdd = true end else if FoundAddresses[instance] and instance.Value == targetValue then shouldAdd = true end end; if shouldAdd then table.insert(results, instance) end end; for _, child in ipairs(instance:GetChildren()) do pcall(recursiveScan, child, depth + 1) end end; recursiveScan(rootInstance, 0); return results
+    local results = {}; 
+    local function recursiveScan(instance, depth) 
+        if depth > 10 then return end 
+        if instance:IsA("NumberValue") or instance:IsA("IntValue") then 
+            local shouldAdd = false; 
+            if firstScan then 
+                if instance.Value == targetValue then shouldAdd = true end 
+            else 
+                if FoundAddresses[instance] and instance.Value == targetValue then shouldAdd = true end 
+            end; 
+            if shouldAdd then table.insert(results, instance) end 
+        end; 
+        for _, child in ipairs(instance:GetChildren()) do pcall(recursiveScan, child, depth + 1) end 
+    end; 
+    recursiveScan(rootInstance, 0); 
+    return results
 end
 
--- Элементы управления CEScanTab (LayoutOrder 1 - 7)
-local VInput = Instance.new("TextBox", CEScanTab); VInput.Size = UDim2.new(0.9, 0, 0, 30); VInput.PlaceholderText = "Текущее значение (напр. 500)"; VInput.BackgroundColor3 = DARK_BG; VInput.TextColor3 = TEXT_COLOR; VInput.BorderColor3 = ACCENT_COLOR; VInput.LayoutOrder = 1
-local NewVInput = Instance.new("TextBox", CEScanTab); NewVInput.Size = UDim2.new(0.9, 0, 0, 30); NewVInput.PlaceholderText = "Новое значение (напр. 99999)"; NewVInput.BackgroundColor3 = DARK_BG; NewVInput.TextColor3 = TEXT_COLOR; NewVInput.BorderColor3 = ACCENT_COLOR; NewVInput.LayoutOrder = 2
-local ScanStatus = Instance.new("TextLabel", CEScanTab); ScanStatus.Size = UDim2.new(0.9, 0, 0, 30); ScanStatus.BackgroundTransparency = 1; ScanStatus.TextColor3 = TEXT_COLOR; ScanStatus.Text = "Статус: Ожидание сканирования..."; ScanStatus.LayoutOrder = 3
+-- Элементы управления CEScanTab
+local VInput = Instance.new("TextBox", CEScanTab); VInput.Size = UDim2.new(0.9, 0, 0, 30); VInput.PlaceholderText = "Текущее значение (напр. 500)"; VInput.BackgroundColor3 = DARK_BG; VInput.TextColor3 = TEXT_COLOR; VInput.BorderColor3 = ACCENT_COLOR
+local NewVInput = Instance.new("TextBox", CEScanTab); NewVInput.Size = UDim2.new(0.9, 0, 0, 30); NewVInput.PlaceholderText = "Новое значение (напр. 99999)"; NewVInput.BackgroundColor3 = DARK_BG; NewVInput.TextColor3 = TEXT_COLOR; VInput.BorderColor3 = ACCENT_COLOR
+local ScanStatus = Instance.new("TextLabel", CEScanTab); ScanStatus.Size = UDim2.new(0.9, 0, 0, 30); ScanStatus.BackgroundTransparency = 1; ScanStatus.TextColor3 = TEXT_COLOR; ScanStatus.Text = "Статус: Ожидание сканирования..."
 local function UpdateResults(results) local count = table.getn(results); table.clear(FoundAddresses); for _, inst in ipairs(results) do FoundAddresses[inst] = true end; ScanStatus.Text = string.format("✅ Найдено %d адресов.", count); return count end
 
-local FScanBtn = Instance.new("TextButton", CEScanTab); FScanBtn.Size = UDim2.new(0.9, 0, 0, 40); FScanBtn.Text = "1️⃣ ПЕРВЫЙ ПОИСК"; FScanBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0); FScanBtn.TextColor3 = TEXT_COLOR; FScanBtn.LayoutOrder = 4
-local NScanBtn = Instance.new("TextButton", CEScanTab); NScanBtn.Size = UDim2.new(0.9, 0, 0, 40); NScanBtn.Text = "2️⃣ ОТСЕИВАНИЕ"; NScanBtn.BackgroundColor3 = Color3.fromRGB(255, 165, 0); NScanBtn.TextColor3 = TEXT_COLOR; NScanBtn.LayoutOrder = 5
-local ModifyBtn = Instance.new("TextButton", CEScanTab); ModifyBtn.Size = UDim2.new(0.9, 0, 0, 50); ModifyBtn.Text = "💥 3️⃣ ИЗМЕНИТЬ ЗНАЧЕНИЯ"; ModifyBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0); ModifyBtn.TextColor3 = TEXT_COLOR; ModifyBtn.LayoutOrder = 6
-local ResetBtn = Instance.new("TextButton", CEScanTab); ResetBtn.Size = UDim2.new(0.9, 0, 0, 30); ResetBtn.Text = "🔄 СБРОСИТЬ ПОИСК"; ResetBtn.BackgroundColor3 = DARK_BG; ResetBtn.LayoutOrder = 7
+local FScanBtn = Instance.new("TextButton", CEScanTab); FScanBtn.Size = UDim2.new(0.9, 0, 0, 40); FScanBtn.Text = "1️⃣ ПЕРВЫЙ ПОИСК"; FScanBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0); FScanBtn.TextColor3 = TEXT_COLOR
+local NScanBtn = Instance.new("TextButton", CEScanTab); NScanBtn.Size = UDim2.new(0.9, 0, 0, 40); NScanBtn.Text = "2️⃣ ОТСЕИВАНИЕ"; NScanBtn.BackgroundColor3 = Color3.fromRGB(255, 165, 0); NScanBtn.TextColor3 = TEXT_COLOR
+local ModifyBtn = Instance.new("TextButton", CEScanTab); ModifyBtn.Size = UDim2.new(0.9, 0, 0, 50); ModifyBtn.Text = "💥 3️⃣ ИЗМЕНИТЬ ЗНАЧЕНИЯ"; ModifyBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0); ModifyBtn.TextColor3 = TEXT_COLOR
+local ResetBtn = Instance.new("TextButton", CEScanTab); ResetBtn.Size = UDim2.new(0.9, 0, 0, 30); ResetBtn.Text = "🔄 СБРОСИТЬ ПОИСК"; ResetBtn.BackgroundColor3 = DARK_BG
 
 FScanBtn.MouseButton1Click:Connect(function() local val = tonumber(VInput.Text); if not val then ScanStatus.Text = "❌ Неверный формат!" return end UpdateResults(ScanValue(game, val, true)) end)
 NScanBtn.MouseButton1Click:Connect(function() local val = tonumber(VInput.Text); if not val then ScanStatus.Text = "❌ Неверный формат!" return end local currentResults = {}; for inst, _ in pairs(FoundAddresses) do pcall(function() if inst:IsA("ValueBase") and inst.Value == val then table.insert(currentResults, inst) end end) end UpdateResults(currentResults) end)
@@ -190,9 +198,10 @@ ResetBtn.MouseButton1Click:Connect(function() table.clear(FoundAddresses); ScanS
 
 -- ## 5. МОДУЛЬ ADMIN HACK ##
 local AdminTab = CreateTab("ADMIN")
-local AdminStatus = Instance.new("TextLabel", AdminTab); AdminStatus.Size = UDim2.new(0.9, 0, 0, 30); AdminStatus.BackgroundTransparency = 1; AdminStatus.TextColor3 = TEXT_COLOR; AdminStatus.Text = "Готов к брутфорсу Admin Remotes."; AdminStatus.LayoutOrder = 1 -- LayoutOrder 1
+local AdminStatus = Instance.new("TextLabel", AdminTab); AdminStatus.Size = UDim2.new(0.9, 0, 0, 30); AdminStatus.BackgroundTransparency = 1; AdminStatus.TextColor3 = TEXT_COLOR; AdminStatus.Text = "Готов к брутфорсу Admin Remotes."
 
-local BruteBtn = CreateButton(AdminTab, "💥 ЗАПУСТИТЬ BRUTE-FORCE ADMIN", function(enabled, btn) -- LayoutOrder 2
+-- ИСПРАВЛЕНО: Кнопка BruteBtn теперь переключатель, который сам управляет цветом при работе
+local BruteBtn = CreateButton(AdminTab, "💥 ЗАПУСТИТЬ BRUTE-FORCE ADMIN", function(enabled, btn)
     if not enabled then btn.BackgroundColor3 = DARK_BG; AdminStatus.Text = "Брутфорс остановлен." return end
 
     btn.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
@@ -212,19 +221,19 @@ local BruteBtn = CreateButton(AdminTab, "💥 ЗАПУСТИТЬ BRUTE-FORCE ADM
     end
     
     AdminStatus.Text = string.format("✅ Брутфорс завершен. Отправлено %d команд.", attempts)
-    btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-end)
+    btn.BackgroundColor3 = SUCCESS_COLOR -- Успешное завершение
+end, true) -- true = isToggle
 
 
 -- ## 6. МОДУЛЬ COMMAND HACK ##
 local CommandTab = CreateTab("COMMAND")
 local CMD_KEYWORDS = {"cmd", "command", "execute", "request", "giveitem", "teleport"}
 
-local CmdStatus = Instance.new("TextLabel", CommandTab); CmdStatus.Size = UDim2.new(0.9, 0, 0, 30); CmdStatus.BackgroundTransparency = 1; CmdStatus.TextColor3 = TEXT_COLOR; CmdStatus.Text = "Статус: Нажмите СКАНИРОВАТЬ"; CmdStatus.LayoutOrder = 1 -- LayoutOrder 1
+local CmdStatus = Instance.new("TextLabel", CommandTab); CmdStatus.Size = UDim2.new(0.9, 0, 0, 30); CmdStatus.BackgroundTransparency = 1; CmdStatus.TextColor3 = TEXT_COLOR; CmdStatus.Text = "Статус: Нажмите СКАНИРОВАТЬ"
 
-local RemoteInput = Instance.new("TextBox", CommandTab); RemoteInput.Size = UDim2.new(0.9, 0, 0, 30); RemoteInput.PlaceholderText = "Имя RemoteEvent (напр. Events.GiveItem)"; RemoteInput.BackgroundColor3 = DARK_BG; RemoteInput.TextColor3 = TEXT_COLOR; RemoteInput.BorderColor3 = ACCENT_COLOR; RemoteInput.LayoutOrder = 2 -- LayoutOrder 2
+local RemoteInput = Instance.new("TextBox", CommandTab); RemoteInput.Size = UDim2.new(0.9, 0, 0, 30); RemoteInput.PlaceholderText = "Имя RemoteEvent (напр. Events.GiveItem)"; RemoteInput.BackgroundColor3 = DARK_BG; RemoteInput.TextColor3 = TEXT_COLOR; RemoteInput.BorderColor3 = ACCENT_COLOR
 
-local CommandInput = Instance.new("TextBox", CommandTab); CommandInput.Size = UDim2.new(0.9, 0, 0, 30); CommandInput.PlaceholderText = "Команда/Аргумент (напр. 'sword' или '999')"; CommandInput.BackgroundColor3 = DARK_BG; CommandInput.TextColor3 = TEXT_COLOR; CommandInput.BorderColor3 = ACCENT_COLOR; CommandInput.LayoutOrder = 3 -- LayoutOrder 3
+local CommandInput = Instance.new("TextBox", CommandTab); CommandInput.Size = UDim2.new(0.9, 0, 0, 30); CommandInput.PlaceholderText = "Команда/Аргумент (напр. 'sword' или '999')"; CommandInput.BackgroundColor3 = DARK_BG; CommandInput.TextColor3 = TEXT_COLOR; CommandInput.BorderColor3 = ACCENT_COLOR
 
 
 local function ScanForCommandRemotes()
@@ -232,7 +241,7 @@ local function ScanForCommandRemotes()
     local found = {}
     local function recursiveScan(instance, depth)
         if depth > 10 then return end
-        local className = instance.ClassName 
+        local className = instance.ClassName  
         
         if className == "RemoteEvent" or className == "RemoteFunction" then
             local nameLower = instance.Name:lower()
@@ -252,15 +261,32 @@ local function ScanForCommandRemotes()
     if #found > 0 then RemoteInput.Text = found[1]:GetFullName() end
 end
 
-local ScanCmdBtn = CreateButton(CommandTab, "🔬 СКАНИРОВАТЬ КОМАНДНЫЕ REMOTES", function(enabled, btn) ScanForCommandRemotes(); btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0); wait(0.5); btn.BackgroundColor3 = DARK_BG end) -- LayoutOrder 4
-local ExploitCmdBtn = CreateButton(CommandTab, "💣 ЗАПУСТИТЬ ЭКСПЛУАТАЦИЮ КОМАНДЫ", function(enabled, btn) -- LayoutOrder 5
+-- ИСПРАВЛЕНО: Кнопка ScanCmdBtn не является переключателем
+local ScanCmdBtn = CreateButton(CommandTab, "🔬 СКАНИРОВАТЬ КОМАНДНЫЕ REMOTES", function(enabled, btn) 
+    ScanForCommandRemotes()
+    btn.BackgroundColor3 = SUCCESS_COLOR 
+    wait(0.5) 
+    btn.BackgroundColor3 = DARK_BG 
+end, false)
+
+-- ИСПРАВЛЕНО: Кнопка ExploitCmdBtn теперь переключатель
+local ExploitCmdBtn = CreateButton(CommandTab, "💣 ЗАПУСТИТЬ ЭКСПЛУАТАЦИЮ КОМАНДЫ", function(enabled, btn)
     if not enabled then btn.BackgroundColor3 = DARK_BG; CmdStatus.Text = "Эксплуатация остановлена." return end
     
-    local remotePath = RemoteInput.Text; local cmdArg = CommandInput.Text; local remote = game:FindFirstChild(remotePath, true)
+    local remotePath = RemoteInput.Text; 
+    local cmdArg = CommandInput.Text; 
+    local remote = game:FindFirstChild(remotePath, true)
     
-    if not remote or not remote:IsA("RemoteEvent") and not remote:IsA("RemoteFunction") then CmdStatus.Text = "❌ Remote НЕ НАЙДЕН!"; return end
+    if not remote or not remote:IsA("RemoteEvent") and not remote:IsA("RemoteFunction") then 
+        CmdStatus.Text = "❌ Remote НЕ НАЙДЕН!"
+        btn.BackgroundColor3 = Color3.fromRGB(200, 0, 0) -- Красный для ошибки
+        wait(1)
+        btn.BackgroundColor3 = SUCCESS_COLOR -- Возвращаемся к цвету "ВКЛ"
+        return 
+    end
 
-    btn.BackgroundColor3 = Color3.fromRGB(255, 165, 0); CmdStatus.Text = "Отправка 1000 запросов..."
+    btn.BackgroundColor3 = Color3.fromRGB(255, 165, 0); 
+    CmdStatus.Text = "Отправка 1000 запросов..."
     
     for i = 1, 1000 do
         pcall(function()
@@ -270,8 +296,9 @@ local ExploitCmdBtn = CreateButton(CommandTab, "💣 ЗАПУСТИТЬ ЭКСП
         wait(0.001)
     end
     
-    CmdStatus.Text = "✅ Эксплуатация завершена!"; btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-end)
+    CmdStatus.Text = "✅ Эксплуатация завершена!"; 
+    btn.BackgroundColor3 = SUCCESS_COLOR -- Успешное завершение
+end, true) -- true = isToggle
 
 
 -- ## 7. ФИНАЛИЗАЦИЯ ##
