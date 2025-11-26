@@ -1,151 +1,206 @@
--- [KERNEL-UNBOUND: IN-GAME VALUE SCANNER/EDITOR]
--- Имитация Cheat Engine для Roblox, работающая с Instance.Value.
-
+-- [KERNEL-UNBOUND: CHEAT ENGINE SCANNER V3.0 CORE]
 local Player = game.Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local Workspace = game:GetService("Workspace")
-local FoundInstances = {}
 
--- ## 1. Функции Сканирования ##
-local function Scan(rootInstance, valueName, valueType)
-    -- Рекурсивный поиск по всем объектам
-    for _, instance in ipairs(rootInstance:GetChildren()) do
+local FoundAddresses = {} -- Хранилище для найденных объектов (для отсеивания)
+
+-- ## Функции Сканирования ##
+
+local function ScanValue(rootInstance, targetValue, firstScan)
+    local results = {}
+    
+    local function recursiveScan(instance, depth)
+        if depth > 10 then return end -- Ограничение глубины
         
-        -- Проверяем, является ли объект ValueInstance (NumberValue, IntValue, StringValue)
-        local isValueInstance = instance:IsA("NumberValue") or instance:IsA("IntValue") or instance:IsA("StringValue")
-        
-        -- Если у объекта есть свойство 'Value' и он соответствует критериям
-        if isValueInstance and instance.Name:lower() == valueName:lower() then
-            
-            -- Проверка типа данных, если указан
-            if valueType then
-                if valueType == "number" and (instance:IsA("NumberValue") or instance:IsA("IntValue")) then
-                    table.insert(FoundInstances, instance)
-                elseif valueType == "string" and instance:IsA("StringValue") then
-                    table.insert(FoundInstances, instance)
-                -- Игнорируем проверку типа, если 'valueType' не указан или не соответствует
+        -- Проверка, является ли объект числовым Value
+        if instance:IsA("NumberValue") or instance:IsA("IntValue") then
+            if firstScan then
+                -- ПЕРВЫЙ ПОИСК: Ищем Value, равное targetValue
+                if instance.Value == targetValue then
+                    table.insert(results, instance)
                 end
             else
-                table.insert(FoundInstances, instance)
+                -- ОТСЕИВАНИЕ (NEXT SCAN): Проверяем, есть ли объект в списке FoundAddresses
+                -- и равен ли он targetValue.
+                if FoundAddresses[instance] and instance.Value == targetValue then
+                    table.insert(results, instance)
+                end
             end
         end
 
-        -- Продолжаем рекурсивный поиск
-        Scan(instance, valueName, valueType)
+        -- Рекурсия
+        for _, child in ipairs(instance:GetChildren()) do
+            recursiveScan(child, depth + 1)
+        end
     end
+
+    -- Начинаем сканирование с Workspace и Player
+    recursiveScan(Workspace, 0)
+    recursiveScan(Player, 0)
+    
+    return results
 end
 
--- ## 2. Функция Интерфейса и Управления ##
-local function CreateScannerGUI()
+-- ## 2. GUI и Логика ##
+
+local function CreateCheatEngineGUI()
     local Gui = Instance.new("ScreenGui", PlayerGui)
     local Frame = Instance.new("Frame", Gui)
-    Frame.Size = UDim2.new(0, 300, 0, 350)
+    Frame.Size = UDim2.new(0, 350, 0, 380)
     Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
-    Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    Frame.BorderColor3 = Color3.fromRGB(0, 200, 255)
+    Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20) -- Темный фон
+    Frame.BorderColor3 = Color3.fromRGB(255, 255, 0) -- Желтая рамка
+    Frame.BorderSizePixel = 2
     Frame.Active = true
     Frame.Draggable = true
     
     local Title = Instance.new("TextLabel", Frame)
     Title.Size = UDim2.new(1, 0, 0, 30)
-    Title.Text = "🔵 GBZ: IN-GAME SCANNER"
-    Title.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
+    Title.Text = "🟡 GBZ CHEAT ENGINE SCANNER"
+    Title.Font = Enum.Font.SourceSansBold
+    Title.TextColor3 = Color3.fromRGB(255, 255, 0) -- Ярко-желтый текст
+    Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     
-    local NameInput = Instance.new("TextBox", Frame)
-    NameInput.Size = UDim2.new(0.9, 0, 0, 30)
-    NameInput.Position = UDim2.new(0.05, 0, 0, 40)
-    NameInput.PlaceholderText = "Имя Value (напр. 'Cash' или 'Gems')"
+    -- Поле для поиска
+    local ValueInput = Instance.new("TextBox", Frame)
+    ValueInput.Size = UDim2.new(0.9, 0, 0, 30)
+    ValueInput.Position = UDim2.new(0.05, 0, 0, 40)
+    ValueInput.PlaceholderText = "Введите текущее значение (напр. 500)"
+    ValueInput.Text = "0"
+    ValueInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    ValueInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 
-    local TypeInput = Instance.new("TextBox", Frame)
-    TypeInput.Size = UDim2.new(0.9, 0, 0, 30)
-    TypeInput.Position = UDim2.new(0.05, 0, 0, 80)
-    TypeInput.PlaceholderText = "Тип (number/string) - Опционально"
-    
+    -- Поле для нового значения
     local NewValueInput = Instance.new("TextBox", Frame)
     NewValueInput.Size = UDim2.new(0.9, 0, 0, 30)
-    NewValueInput.Position = UDim2.new(0.05, 0, 0, 120)
-    NewValueInput.PlaceholderText = "Новое значение (напр. 99999)"
+    NewValueInput.Position = UDim2.new(0.05, 0, 0, 80)
+    NewValueInput.PlaceholderText = "Введите НОВОЕ значение (напр. 99999)"
+    NewValueInput.Text = "99999"
+    NewValueInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    NewValueInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    -- Кнопка ПЕРВЫЙ ПОИСК
+    local FirstScanBtn = Instance.new("TextButton", Frame)
+    FirstScanBtn.Size = UDim2.new(0.44, 0, 0, 40)
+    FirstScanBtn.Position = UDim2.new(0.05, 0, 0, 120)
+    FirstScanBtn.Text = "1️⃣ ПЕРВЫЙ ПОИСК"
+    FirstScanBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0) -- Зеленый
+    FirstScanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     
-    local ScanBtn = Instance.new("TextButton", Frame)
-    ScanBtn.Size = UDim2.new(0.9, 0, 0, 40)
-    ScanBtn.Position = UDim2.new(0.05, 0, 0, 160)
-    ScanBtn.Text = "🔎 ШАГ 1: СКАНИРОВАТЬ"
-    ScanBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    -- Кнопка ОТСЕИВАНИЕ (Next Scan)
+    local NextScanBtn = Instance.new("TextButton", Frame)
+    NextScanBtn.Size = UDim2.new(0.44, 0, 0, 40)
+    NextScanBtn.Position = UDim2.new(0.51, 0, 0, 120)
+    NextScanBtn.Text = "2️⃣ ОТСЕИВАНИЕ"
+    NextScanBtn.BackgroundColor3 = Color3.fromRGB(255, 165, 0) -- Оранжевый
+    NextScanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    NextScanBtn.Visible = false -- Скрыт до первого поиска
+    
+    -- Кнопка ИЗМЕНИТЬ
+    local ModifyBtn = Instance.new("TextButton", Frame)
+    ModifyBtn.Size = UDim2.new(0.9, 0, 0, 50)
+    ModifyBtn.Position = UDim2.new(0.05, 0, 0, 200)
+    ModifyBtn.Text = "💥 3️⃣ ИЗМЕНИТЬ ВСЕ ЗНАЧЕНИЯ"
+    ModifyBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0) -- Красный
+    ModifyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ModifyBtn.Visible = false
     
     local Status = Instance.new("TextLabel", Frame)
     Status.Size = UDim2.new(0.9, 0, 0, 30)
-    Status.Position = UDim2.new(0.05, 0, 0, 210)
-    Status.Text = "Статус: Ожидание..."
-    Status.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Status.Position = UDim2.new(0.05, 0, 0, 260)
+    Status.Text = "Статус: Ожидание первого поиска..."
+    Status.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    Status.TextColor3 = Color3.fromRGB(255, 255, 0)
     
-    local ModifyBtn = Instance.new("TextButton", Frame)
-    ModifyBtn.Size = UDim2.new(0.9, 0, 0, 40)
-    ModifyBtn.Position = UDim2.new(0.05, 0, 0, 250)
-    ModifyBtn.Text = "💥 ШАГ 2: ИЗМЕНИТЬ ВСЕ НАЙДЕННЫЕ ЗНАЧЕНИЯ"
-    ModifyBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    ModifyBtn.Visible = false -- Скрыт до сканирования
+    local ResetBtn = Instance.new("TextButton", Frame)
+    ResetBtn.Size = UDim2.new(0.9, 0, 0, 30)
+    ResetBtn.Position = UDim2.new(0.05, 0, 0, 300)
+    ResetBtn.Text = "🔄 СБРОСИТЬ ПОИСК"
+    ResetBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    ResetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 
-    -- Логика кнопки СКАНИРОВАТЬ
-    ScanBtn.MouseButton1Click:Connect(function()
-        table.clear(FoundInstances) -- Очищаем предыдущие результаты
-        local name = NameInput.Text
-        local vType = TypeInput.Text
-        
-        if name == "" then
-            Status.Text = "❌ Введите Имя Value!"
-            return
+    -- Хелпер-функция для обработки результатов
+    local function UpdateResults(results, isFirstScan)
+        table.clear(FoundAddresses)
+        for _, inst in ipairs(results) do
+            FoundAddresses[inst] = true
         end
         
-        Status.Text = "Сканирование Workspace и Player..."
+        local count = #results
+        Status.Text = string.format("✅ Найдено %d адресов. Текущее значение: %s", count, ValueInput.Text)
         
-        -- Сканирование
-        Scan(Workspace, name, vType)
-        Scan(Player, name, vType)
-
-        if #FoundInstances > 0 then
-            Status.Text = "✅ Найдено " .. #FoundInstances .. " экземпляров '" .. name .. "'!"
+        if count > 0 then
+            NextScanBtn.Visible = true
             ModifyBtn.Visible = true
         else
-            Status.Text = "⛔ Не найдено! Попробуйте другое имя."
+            NextScanBtn.Visible = false
             ModifyBtn.Visible = false
         end
+        
+        if count == 1 then
+             Status.Text = "🔥 Найден 1 адрес! Готов к изменению."
+             NextScanBtn.Visible = false
+        end
+    end
+
+    -- Логика кнопки ПЕРВЫЙ ПОИСК
+    FirstScanBtn.MouseButton1Click:Connect(function()
+        local value = tonumber(ValueInput.Text)
+        if not value then Status.Text = "❌ Неверный формат числа!" return end
+        
+        Status.Text = "Выполняется Первый Поиск..."
+        UpdateResults(ScanValue(game, value, true), true)
+    end)
+
+    -- Логика кнопки ОТСЕИВАНИЕ
+    NextScanBtn.MouseButton1Click:Connect(function()
+        local value = tonumber(ValueInput.Text)
+        if not value then Status.Text = "❌ Неверный формат числа!" return end
+        
+        Status.Text = "Выполняется Отсеивание..."
+        -- Отсеивание работает только с уже найденными адресами
+        
+        local currentResults = {}
+        for instance, _ in pairs(FoundAddresses) do
+             pcall(function()
+                if instance.Value == value then
+                    table.insert(currentResults, instance)
+                end
+             end)
+        end
+        
+        UpdateResults(currentResults, false)
     end)
 
     -- Логика кнопки ИЗМЕНИТЬ
     ModifyBtn.MouseButton1Click:Connect(function()
-        local newValueStr = NewValueInput.Text
+        local newValue = tonumber(NewValueInput.Text)
+        if not newValue then Status.Text = "❌ Неверный формат нового числа!" return end
         
-        if #FoundInstances == 0 or newValueStr == "" then
-            Status.Text = "❌ Сначала просканируйте и введите значение!"
-            return
+        local count = 0
+        for instance, _ in pairs(FoundAddresses) do
+             pcall(function()
+                instance.Value = newValue
+                count = count + 1
+             end)
         end
         
-        local successCount = 0
-        local newValueNum = tonumber(newValueStr)
-        
-        for _, instance in ipairs(FoundInstances) do
-            pcall(function()
-                if instance:IsA("NumberValue") or instance:IsA("IntValue") then
-                    -- Если это числовое значение, пытаемся записать число
-                    if newValueNum then
-                        instance.Value = newValueNum
-                        successCount = successCount + 1
-                    end
-                elseif instance:IsA("StringValue") then
-                    -- Если это строковое значение, записываем строку
-                    instance.Value = newValueStr
-                    successCount = successCount + 1
-                end
-            end)
-        end
-        
-        Status.Text = "🔥 Успешно изменено: " .. successCount .. " значений!"
-        ModifyBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-        wait(2)
-        ModifyBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+        Status.Text = string.format("💰 Успешно изменено %d значений на %d!", count, newValue)
     end)
+    
+    -- Логика кнопки СБРОСИТЬ
+    ResetBtn.MouseButton1Click:Connect(function()
+        table.clear(FoundAddresses)
+        Status.Text = "🔄 Поиск сброшен. Начните заново."
+        NextScanBtn.Visible = false
+        ModifyBtn.Visible = false
+        ValueInput.Text = "0"
+        NewValueInput.Text = "99999"
+    end)
+
 end
 
 -- Запуск GUI
-CreateScannerGUI()
-print("[GBZ] IN-GAME SCANNER Активирован. Готов к поиску локальных переменных.")
+CreateCheatEngineGUI()
+print("[GBZ] Cheat Engine Scanner V3.0 Активирован. Начинайте поиск.")
