@@ -1,5 +1,5 @@
--- [FINAL RELEASE: OMNI-EXPLOIT SUITE V5.2 | DUPLICATION KERNEL ADDED]
--- Цель: Добавление автоматизированного модуля дюпа предметов.
+-- [FINAL RELEASE: OMNI-EXPLOIT SUITE V5.3 | FULL INTEGRATION KERNEL]
+-- Все модули объединены: AUTOMATION, SCANNER, DUPE, EXPLOIT, UTILITY.
 
 local Player = game.Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
@@ -8,17 +8,17 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
 
--- КОНСТАНТЫ (Без изменений)
-local ACCENT_COLOR = Color3.fromRGB(0, 255, 100)  -- Неоновый Зеленый
-local TEXT_COLOR = Color3.fromRGB(220, 255, 220)
-local BG_COLOR = Color3.fromRGB(15, 20, 25)
-local DARK_BG = Color3.fromRGB(30, 35, 45)
+-- КОНСТАНТЫ
+local ACCENT_COLOR = Color3.fromRGB(255, 100, 255)  -- Фуксия/Кибер-Пурпур
+local TEXT_COLOR = Color3.fromRGB(255, 230, 255)
+local BG_COLOR = Color3.fromRGB(15, 10, 20)
+local DARK_BG = Color3.fromRGB(35, 25, 45)
 
 local ActiveConnections = {}
 local FoundAddresses = {}
 local FoundRemotes = {}
 
--- Утилиты (Без изменений)
+-- Утилиты
 local function GetHumanoid()
     local char = Player.Character or Player.CharacterAdded:Wait()
     return char:FindFirstChild("Humanoid")
@@ -28,12 +28,12 @@ local function GetHRP()
     return char:FindFirstChild("HumanoidRootPart")
 end
 
--- ## 1. CORE GUI SETUP (Сокращено для эффективности) ##
+-- ## 1. CORE GUI SETUP ##
 local Gui = Instance.new("ScreenGui", PlayerGui)
-Gui.Name = "GBZ_V5_2_DupeAutomated"
+Gui.Name = "GBZ_V5_3_Complete"
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 480, 0, 520) -- Увеличение размера для новой вкладки
+MainFrame.Size = UDim2.new(0, 480, 0, 520)
 MainFrame.AnchorPoint = Vector2.new(0.5, 0.5) 
 MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 MainFrame.BackgroundColor3 = BG_COLOR
@@ -45,7 +45,7 @@ MainFrame.Parent = Gui
 
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "✨ GBZ OMNI-AUTO SUITE V5.2 | DUPE KERNEL"
+Title.Text = "🔮 GBZ OMNI-SUITE V5.3 | KERNEL MAXIMUS"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextColor3 = TEXT_COLOR
 Title.BackgroundColor3 = DARK_BG
@@ -56,7 +56,7 @@ CloseButton.Size = UDim2.new(0, 30, 0, 30)
 CloseButton.Position = UDim2.new(1, -30, 0, 0)
 CloseButton.Text = "❌"
 CloseButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-CloseButton.MouseButton1Click:Connect(function() Gui:Destroy(); for _, conn in pairs(ActiveConnections) do conn:Disconnect() end end)
+CloseButton.MouseButton1Click:Connect(function() Gui:Destroy(); for _, conn in pairs(ActiveConnections) do pcall(function() conn:Disconnect() end) end end)
 
 local TabFrame = Instance.new("Frame", MainFrame)
 TabFrame.Size = UDim2.new(0, 120, 1, -30)
@@ -119,8 +119,8 @@ local function CreateTab(name)
 end
 
 
--- ## 2. МОДУЛЬ MAIN CHEATS И АВТОМАТИЗАЦИЯ (Без изменений) ##
-local AutoTab = CreateTab("AUTOMATION")
+-- ## 2. МОДУЛЬ AUTOMATION (AUTO) ##
+local AutoTab = CreateTab("AUTO")
 
 -- Auto Health & Anti-AFK
 CreateButton(AutoTab, "❤️ Auto Health & Anti-AFK", function(enabled)
@@ -150,7 +150,7 @@ CreateButton(AutoTab, "⚡️ Auto God Mode & Speed", function(enabled)
     H.Name = enabled and "GodHumanoid" or "Humanoid"
 end)
 
--- Auto Farm (Target: 'Coin')
+-- Auto Farm (Target: 'Coin' / Teleport)
 local isAutoFarming = false
 local farm_conn = nil
 CreateButton(AutoTab, "💰 Auto Farm (Target: 'Coin')", function(enabled)
@@ -186,7 +186,7 @@ CreateButton(AutoTab, "💰 Auto Farm (Target: 'Coin')", function(enabled)
 end)
 
 
--- ## 3. МОДУЛЬ VALUE SCANNER (Без изменений) ##
+-- ## 3. МОДУЛЬ VALUE SCANNER (SCANNER) ##
 local ScannerTab = CreateTab("SCANNER")
 
 local SInput = Instance.new("TextBox", ScannerTab); SInput.Size = UDim2.new(0.9, 0, 0, 30); SInput.PlaceholderText = "Значение для сканирования (число/строка)"; SInput.BackgroundColor3 = DARK_BG; SInput.TextColor3 = TEXT_COLOR; SInput.BorderColor3 = ACCENT_COLOR
@@ -269,8 +269,8 @@ CreateButton(ScannerTab, "💥 3️⃣ ИЗМЕНИТЬ ЗНАЧЕНИЯ", funct
 end)
 
 
--- ## 4. МОДУЛЬ DUPE HACK (НОВЫЙ) ##
-local DupeTab = CreateTab("DUPE HACK")
+-- ## 4. МОДУЛЬ DUPE HACK (DUPE) ##
+local DupeTab = CreateTab("DUPE")
 local DupeStatus = Instance.new("TextLabel", DupeTab); DupeStatus.Size = UDim2.new(0.9, 0, 0, 30); DupeStatus.BackgroundTransparency = 1; DupeStatus.TextColor3 = TEXT_COLOR; DupeStatus.Text = "Статус: Нажмите СКАНИРОВАТЬ REMOTES"
 
 local DupeRemoteInput = Instance.new("TextBox", DupeTab); DupeRemoteInput.Size = UDim2.new(0.9, 0, 0, 30); DupeRemoteInput.PlaceholderText = "Путь к RemoteEvent (напр. Events.GiveItem)"; DupeRemoteInput.BackgroundColor3 = DARK_BG; DupeRemoteInput.TextColor3 = TEXT_COLOR; DupeRemoteInput.BorderColor3 = ACCENT_COLOR
@@ -322,14 +322,13 @@ local function DupeExploitStart(remotePath, itemName, spamCount)
     for i = 1, spamCount do
         pcall(function()
             if remote:IsA("RemoteEvent") then 
-                -- Типичные аргументы: item name, player, quantity (количество)
                 remote:FireServer(itemName, Player, 9999) 
             elseif remote:IsA("RemoteFunction") then 
                 remote:InvokeServer(itemName, Player, 9999) 
             end
             successCount = successCount + 1
         end)
-        wait(0.001) -- Небольшая задержка, чтобы не забанило мгновенно
+        wait(0.001)
     end
     
     return successCount
@@ -355,14 +354,14 @@ CreateButton(DupeTab, "💣 АКТИВИРОВАТЬ DUPE (x1000)", function(ena
         return
     end
 
-    spawn(function() -- Запуск асинхронно
+    spawn(function()
         local count = DupeExploitStart(remotePath, itemName, 1000)
         DupeStatus.Text = string.format("✅ Дюп завершен! Отправлено %d запросов.", count)
     end)
 end)
 
 
--- ## 5. МОДУЛЬ COMMAND & ADMIN HACK (Без изменений) ##
+-- ## 5. МОДУЛЬ REMOTE EXPLOIT (EXPLOIT) ##
 local ExploitTab = CreateTab("EXPLOIT")
 local ExploitStatus = Instance.new("TextLabel", ExploitTab); ExploitStatus.Size = UDim2.new(0.9, 0, 0, 30); ExploitStatus.BackgroundTransparency = 1; ExploitStatus.TextColor3 = TEXT_COLOR; ExploitStatus.Text = "Статус: Нажмите AUTO-EXPLOIT"
 
@@ -435,7 +434,7 @@ CreateButton(ExploitTab, "💣 АВТОМАТИЧЕСКИЙ REMOTE-EXPLOIT", fun
 end)
 
 
--- ## 6. МОДУЛЬ CLEANUP И КЛАВИАТУРЫ (Без изменений) ##
+-- ## 6. МОДУЛЬ UTILITY (UTILITY) ##
 local UtilityTab = CreateTab("UTILITY")
 
 -- Полное отключение всех локальных событий
@@ -443,7 +442,7 @@ CreateButton(UtilityTab, "🔥 FULL CLEANUP / DISCONNECT", function(enabled, btn
     btn.Text = "DISCONNECTING..."
     local count = 0
     for name, conn in pairs(ActiveConnections) do
-        conn:Disconnect()
+        pcall(function() conn:Disconnect() end)
         ActiveConnections[name] = nil
         count = count + 1
     end
@@ -451,11 +450,13 @@ CreateButton(UtilityTab, "🔥 FULL CLEANUP / DISCONNECT", function(enabled, btn
     local totalRemoved = 0
     for _, instance in ipairs(game:GetDescendants()) do
         pcall(function()
-            local connections = getconnections(instance.AncestryChanged)
-            for _, conn in ipairs(connections) do
-                if conn.State == 1 then
-                    conn:Disconnect()
-                    totalRemoved = totalRemoved + 1
+            if getconnections then -- Проверка на наличие функции getconnections
+                local connections = getconnections(instance.AncestryChanged)
+                for _, conn in ipairs(connections) do
+                    if conn.State == 1 then
+                        conn:Disconnect()
+                        totalRemoved = totalRemoved + 1
+                    end
                 end
             end
         end)
@@ -469,7 +470,12 @@ end)
 CreateButton(UtilityTab, "🛡️ ANTI-VOID PART", function(enabled, btn)
     local HRP = GetHRP()
     if not HRP then return end
+    
+    local existingPart = HRP.Parent:FindFirstChild("AntiVoidPart")
+    
     if enabled then
+        if existingPart then existingPart:Destroy() end
+        
         local AntiVoidPart = Instance.new("Part")
         AntiVoidPart.Name = "AntiVoidPart"
         AntiVoidPart.Size = Vector3.new(0.5, 0.5, 0.5)
@@ -483,16 +489,15 @@ CreateButton(UtilityTab, "🛡️ ANTI-VOID PART", function(enabled, btn)
         weld.Part1 = HRP
         weld.Parent = AntiVoidPart
         
-        AntiVoidPart.Parent = Workspace
+        AntiVoidPart.Parent = HRP.Parent -- Привязываем к персонажу
         btn.Text = "🛡️ ANTI-VOID PART АКТИВИРОВАН"
     else
-        local part = Workspace:FindFirstChild("AntiVoidPart")
-        if part then part:Destroy() end
+        if existingPart then existingPart:Destroy() end
         btn.Text = "🛡️ ANTI-VOID PART"
     end
 end)
 
 
 -- ## 7. ФИНАЛИЗАЦИЯ ##
-SwitchTab("DUPE HACK")
-print("[GBZ] OMNI-AUTO SUITE V5.2 ЗАПУЩЕН. DUPE KERNEL ИНТЕГРИРОВАН.")
+SwitchTab("AUTO")
+print("[GBZ] OMNI-AUTO SUITE V5.3 ЗАПУЩЕН. Ядро стабилизировано.")
