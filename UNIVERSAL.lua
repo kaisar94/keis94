@@ -1,1 +1,99 @@
-eNqVV11uGzcQfvcpRvsSCbAXkh2nqYEUsGUrdSH/IJIbBEEgULsjifGKFEhuZPUMfepzgb7mCD1PT9AjdIb7LysRaqz3h5z/+WY4OjqCjx/h6OgIhncvLNxNZ6mNhMMY+jpGGLl06nc/fTpIdCQSmKUqclIruHy4ufkwubzqv/twP54MHm77bdsBgy41CiyginOO0fjhYjIav5v04A0E44W0QJeAVSIiXOgkRgPWGanm4DTYhV6DWyDo3BTWRdtpRIIxDHKhw7vJ8O7XqwmZwKrH13e3E1ZEKgoL2x2yHM6VkkiejdaIDobSuQTh6mmVaOlgFBm5cjDThgQeHBB5L4S+QQqAt+FGSMVEiArePlxDe0yLK/LRbSDSytE2mk7hp6d7m0qy4VpZJ1SEocJ1Oyh3gs5B+R7eiiVyRLyFQ/0FLTlFWoIazb0wqBxRzYk4vE/EBo0Nh6wv+zh7L6QbaNNfyCRuB9lipondOW64s2R3Bob1ek9e9Be0B1dqTn68gLVUMQVfOovJrPCKQ5CxbHvlV0lPSRGO5G9M9nApl8eepnsIx6d0o6t32vX5+CW1jsCh0/kCjNZLH/zlBhZCxVYv2UhVE3mvrfQQaIgNTw/hqHdM9+z1h1Mvu0+xQg8kyq3VsNEpRILgg8grKzQzjFyyqcm/ENHj3OhUxX2daHNCerKXXFGPVWQ3r+JSmEcgU8lky7p0auvStCE0cxju5RMmJOz42e4uPV7Ba779mIGWKiGNFqBnsJLq0cdIpwYSQklN4KUR87mYJhx0qhBk1lHl9pKo2W/h/TvkKEcJfqFym+p6DEqQlbjz2DlpYGcsuXCGYkputX0SBSRZNS3RWjFHbyXpLpDjOTKGbeiM8cn5HYJPRfYcPz0PHbpOug1C5ufS+fev3//OGtcIyXYHY60T4NVgm3xf2Ov0+0BxzCzZrcE30D6MVypd+vdwREmLcCSUvaA+t21S7m7vdX2jTEaZH5+Ml41kXKtV6uBCP/mY8woZBnaFWDZdfs/IdgWfWLkXlUQ7StcHpgx+jfQbJZnnKjyhWm8yFNnqdbtBhm4lI4KLIBDFOBNp4grstBqKqgOiEHFLbr4XyaOngjaG85DVdTtBnXFf/k5yO+n2zNBv4ISvBu13cr0tssjzq4Zzu/N82sjzeXbUXqTO0cP37OB8tUo2AUz9WlFrfjEn25lvv0UprxF+N+cvu03aPUl/lSW9zlHV6B9fyclHLI/iG+pNg/PRuAW8Fzzj2pm0TFFTxb48v/Z5o2feVKdGzhfuEPApImfomIiYuiFyXwlv21rVcCNau5P7KgSfwvqxG8CgmKh8fj+nMtrAShjX6myPXBZdCf525wDoj6ReU/FTMdDsNJP+YOIjlMIcLYQRER1SLU+Zz03V6PCdqaLG0C+kEHmNIqzWeXjatXEexxj7+YRsrYxdC4oMGbtkSFia6TzSf07JaC1jHg3pm1c1TKmvCRoUaNpaS7eoWVWSv6kMPBuQ+wNprPPD0N2snwhr20FBG+RWyFnFTqqUX8zNK6ZTNumLSOhIpShynuaHdNqRwYImXNIf+Qyiz2CrFJDZRtjL2hMdyppwNEXT3uoIuSW5NSUDzxXlx0/QbZrHf4XhYdUE35QsDUoP+PyAplHV6uw5k2aZzdSf+QzP226Dc8dgX43wnaDSTHAkD88ggDAsjeg0ZO1qCP/8+TU7nvyuxLgFtBQ0+NaMmt5+WfubS8GNicX/4+a1ovwTQvyhmmHBT1CWf0eEQWUa/9ApnvzPhd7XStGk6WGUNWqGM39VtVzNaanlMa3V6CA3NFhi9t7rJzJ6PMtltutNoOM1fuu3ULvzHzWJdIA=
+-- [KERNEL-UNBOUND: УНИВЕРСАЛЬНЫЙ GAME BREAKER (LUAU)]
+
+-- Глобальные ссылки
+local Player = game.Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
+
+-- ## 1. Функции Локальной Манипуляции (Client-Side Cheats) ##
+
+-- 1.1 Speed Hack
+local function SetSpeed(speed)
+    Humanoid.WalkSpeed = speed
+    print("[GBZ:SPEED] Скорость ходьбы установлена на: " .. speed)
+end
+
+-- 1.2 Fly Hack (Noclip с упрощенным управлением)
+local function ToggleFly(enabled)
+    if enabled then
+        -- Отключаем гравитацию и физику столкновений (Noclip)
+        Humanoid:ChangeState(Enum.HumanoidStateType.PlatformStanding)
+        game:GetService("RunService").Heartbeat:Connect(function()
+            if enabled then
+                -- Управление полетом (пример, может потребовать доработки)
+                local camera = game.Workspace.CurrentCamera
+                if game.UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                    Character:SetPrimaryPartCFrame(Character:GetPrimaryPartCFrame() * CFrame.new(0, 0, -1) * 3)
+                end
+                -- Добавить другие клавиши (S, A, D, Space)
+            end
+        end)
+        print("[GBZ:FLY] Fly Hack активирован.")
+    else
+        Humanoid:ChangeState(Enum.HumanoidStateType.Running)
+        print("[GBZ:FLY] Fly Hack деактивирован.")
+    end
+end
+
+-- 1.3 Jump Power Hack
+local function SetJumpPower(power)
+    Humanoid.JumpPower = power
+    print("[GBZ:JUMP] Сила прыжка установлена на: " .. power)
+end
+
+-- ## 2. Функции Сетевого Эксплойта (Remote Event Spammer) ##
+
+-- 2.1 Шаблон для поиска удаленного события/функции
+local function FindRemote(name)
+    -- Поиск в ReplicatedStorage и Workspace (самые частые места)
+    local remote = ReplicatedStorage:FindFirstChild(name, true) or game.Workspace:FindFirstChild(name, true)
+    return remote
+end
+
+-- 2.2 Функция спама
+local function RemoteSpammer(remoteName, iterations, ...)
+    local remote = FindRemote(remoteName)
+    
+    if not remote or (not remote:IsA("RemoteEvent") and not remote:IsA("RemoteFunction")) then
+        warn("[GBZ:REMOTE] Не удалось найти Remote с именем: " .. remoteName)
+        return
+    end
+
+    print("[GBZ:REMOTE] Найден " .. remote.Name .. ". Начинаю спам " .. iterations .. " раз.")
+    local args = {...}
+    
+    for i = 1, iterations do
+        -- Используем pcall для предотвращения сбоя скрипта на ошибке
+        pcall(function()
+            if remote:IsA("RemoteEvent") then
+                remote:FireServer(unpack(args)) -- Отправка данных на сервер
+            elseif remote:IsA("RemoteFunction") then
+                -- Если это RemoteFunction, получаем ответ (для Duplication/Airdrop)
+                local response = remote:InvokeServer(unpack(args)) 
+                -- print("Ответ сервера:", response)
+            end
+        end)
+        -- Короткая задержка для обхода примитивных FloodChecks
+        wait(0.005) 
+    end
+    print("[GBZ:REMOTE] Спам завершен.")
+end
+
+
+-- ## 3. ИСПОЛНЕНИЕ / ИНТЕРФЕЙС ##
+
+-- Активация локальных читов
+SetSpeed(60)       -- Установка супер-скорости
+SetJumpPower(150)  -- Установка супер-прыжка
+-- ToggleFly(true)    -- Активация Fly/Noclip (раскомментировать при необходимости)
+
+-- Пример эксплуатации Remote Event: 
+-- Имитация "Купить Мега-Улучшение", "Получить Дневной Бонус" или "Продать Ресурс".
+-- Для реальной игры нужно узнать точное имя Remote Event и аргументы.
+local targetRemote = "BuyItemEvent" -- ЗАМЕНИТЬ НА РЕАЛЬНОЕ ИМЯ
+local itemID = 42                 -- ЗАМЕНИТЬ НА РЕАЛЬНЫЙ ID
+RemoteSpammer(targetRemote, 50, itemID)
+
+print("[GBZ] GAME BREAKER SCRIPT LOADED SUCCESSFULLY.")
