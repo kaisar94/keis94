@@ -1,170 +1,151 @@
--- [KERNEL-UNBOUND: ЕДИНЫЙ GAME BREAKER V1.0]
--- АВТОР: GAME BREAKER ZERO
+-- [KERNEL-UNBOUND: IN-GAME VALUE SCANNER/EDITOR]
+-- Имитация Cheat Engine для Roblox, работающая с Instance.Value.
 
--- ## Инициализация и Настройка GUI ##
 local Player = game.Players.LocalPlayer
-local Character = Player.Character or Player.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local StarterGui = game:GetService("StarterGui")
+local PlayerGui = Player:WaitForChild("PlayerGui")
+local Workspace = game:GetService("Workspace")
+local FoundInstances = {}
 
--- Отключаем стандартные уведомления Roblox для большей скрытности
-StarterGui:SetCore("SendNotification", {Text = "GBZ Injector Active", Time = 3})
-
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "GBZ_Exploit_Panel"
-ScreenGui.Parent = Player:WaitForChild("PlayerGui")
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 320, 0, 350)
-MainFrame.Position = UDim2.new(0.8, 0, 0.2, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-MainFrame.BorderSizePixel = 1
-MainFrame.BorderColor3 = Color3.fromRGB(200, 0, 0)
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "🔴 GAME BREAKER ZERO | CHAOS MODE"
-Title.Font = Enum.Font.SourceSansBold
-Title.TextColor3 = Color3.fromRGB(255, 50, 50)
-Title.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-Title.Parent = MainFrame
-
--- Функция для создания кнопок
-local function CreateButton(parent, text, yOffset, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.9, 0, 0, 30)
-    btn.Position = UDim2.new(0.05, 0, 0, yOffset)
-    btn.Text = text
-    btn.Font = Enum.Font.SourceSansSemibold
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    btn.Parent = parent
-    
-    local enabled = false
-    btn.MouseButton1Click:Connect(function()
-        enabled = not enabled
-        callback(enabled, btn)
-    end)
-    return btn
-end
-
--- ## 2. Локальные Читы (Speed & Jump) ##
-local DEFAULT_SPEED = 16
-local DEFAULT_JUMP = 50
-
--- Speed Hack
-CreateButton(MainFrame, "⚡️ Speed Hack (x4)", 40, function(enabled, btn)
-    if enabled then
-        Humanoid.WalkSpeed = 64
-        btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        btn.Text = "⚡️ Speed Hack: АКТИВНО (64)"
-    else
-        Humanoid.WalkSpeed = DEFAULT_SPEED
-        btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        btn.Text = "⚡️ Speed Hack (x4)"
-    end
-end)
-
--- Super Jump
-CreateButton(MainFrame, "⬆️ Super Jump (x6)", 80, function(enabled, btn)
-    if enabled then
-        Humanoid.JumpPower = 300
-        btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        btn.Text = "⬆️ Super Jump: АКТИВНО (300)"
-    else
-        Humanoid.JumpPower = DEFAULT_JUMP
-        btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        btn.Text = "⬆️ Super Jump (x6)"
-    end
-end)
-
--- ## 3. Сетевой Эксплойт (Remote Spammer) ##
-
--- Поле ввода для имени Remote Event
-local RemoteNameInput = Instance.new("TextBox")
-RemoteNameInput.Size = UDim2.new(0.9, 0, 0, 30)
-RemoteNameInput.Position = UDim2.new(0.05, 0, 0, 150)
-RemoteNameInput.PlaceholderText = "Имя Remote Event (напр. SellProduce)"
-RemoteNameInput.Text = "InputRemoteNameHere" 
-RemoteNameInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-RemoteNameInput.Parent = MainFrame
-
-local SpamCountInput = Instance.new("TextBox")
-SpamCountInput.Size = UDim2.new(0.9, 0, 0, 30)
-SpamCountInput.Position = UDim2.new(0.05, 0, 0, 190)
-SpamCountInput.PlaceholderText = "Количество циклов (напр. 500)"
-SpamCountInput.Text = "1000"
-SpamCountInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-SpamCountInput.Parent = MainFrame
-
--- Логика спама
-local function FindRemote(name)
-    -- Сканируем ReplicatedStorage и Workspace
-    return ReplicatedStorage:FindFirstChild(name, true) or game.Workspace:FindFirstChild(name, true)
-end
-
-local SpamBtn = CreateButton(MainFrame, "💣 Активировать REMOTE СПАМ", 230, function(enabled, btn)
-    if not enabled then
-        btn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-        btn.Text = "💣 Активировать REMOTE СПАМ"
-        return -- Останавливаем спам, если нажали повторно
-    end
-
-    local remoteName = RemoteNameInput.Text
-    local iterations = tonumber(SpamCountInput.Text) or 1000
-    local remote = FindRemote(remoteName)
-
-    if not remote or (not remote:IsA("RemoteEvent") and not remote:IsA("RemoteFunction")) then
-        btn.Text = "⛔ Remote НЕ НАЙДЕН!"
-        btn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-        wait(2)
-        btn.Text = "💣 Активировать REMOTE СПАМ"
-        return
-    end
-
-    btn.Text = "СПАМ АКТИВЕН! ("..iterations.." запросов)"
-    btn.BackgroundColor3 = Color3.fromRGB(255, 165, 0) -- Желтый: Идет работа
-    
-    -- Активация спам-цикла
-    local args = {1, 100, "generic_id_1337"} -- Универсальные аргументы для обхода
-
-    for i = 1, iterations do 
-        if not FindRemote(remoteName) then break end -- Аварийный выход
+-- ## 1. Функции Сканирования ##
+local function Scan(rootInstance, valueName, valueType)
+    -- Рекурсивный поиск по всем объектам
+    for _, instance in ipairs(rootInstance:GetChildren()) do
         
-        pcall(function()
-            if remote:IsA("RemoteEvent") then
-                remote:FireServer(unpack(args))
-            elseif remote:IsA("RemoteFunction") then
-                remote:InvokeServer(unpack(args))
+        -- Проверяем, является ли объект ValueInstance (NumberValue, IntValue, StringValue)
+        local isValueInstance = instance:IsA("NumberValue") or instance:IsA("IntValue") or instance:IsA("StringValue")
+        
+        -- Если у объекта есть свойство 'Value' и он соответствует критериям
+        if isValueInstance and instance.Name:lower() == valueName:lower() then
+            
+            -- Проверка типа данных, если указан
+            if valueType then
+                if valueType == "number" and (instance:IsA("NumberValue") or instance:IsA("IntValue")) then
+                    table.insert(FoundInstances, instance)
+                elseif valueType == "string" and instance:IsA("StringValue") then
+                    table.insert(FoundInstances, instance)
+                -- Игнорируем проверку типа, если 'valueType' не указан или не соответствует
+                end
+            else
+                table.insert(FoundInstances, instance)
             end
-        end)
-        
-        -- wait(0.001) -- В большинстве инжекторов это не нужно, они выполняют цикл максимально быстро
-    end
+        end
 
-    btn.Text = "✅ СПАМ ЗАВЕРШЕН"
-    btn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-end)
-
--- ## 4. Дополнительные Функции ##
-local function ToggleVisibility(enabled, btn)
-    if enabled then
-        MainFrame.Visible = true
-        btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-    else
-        MainFrame.Visible = false
-        btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        -- Продолжаем рекурсивный поиск
+        Scan(instance, valueName, valueType)
     end
 end
 
--- Кнопка скрытия/показа GUI
-CreateButton(MainFrame, "⚫️ Скрыть/Показать GUI", 270, ToggleVisibility)
-ToggleVisibility(true, MainFrame) -- Показываем при запуске
+-- ## 2. Функция Интерфейса и Управления ##
+local function CreateScannerGUI()
+    local Gui = Instance.new("ScreenGui", PlayerGui)
+    local Frame = Instance.new("Frame", Gui)
+    Frame.Size = UDim2.new(0, 300, 0, 350)
+    Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
+    Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    Frame.BorderColor3 = Color3.fromRGB(0, 200, 255)
+    Frame.Active = true
+    Frame.Draggable = true
+    
+    local Title = Instance.new("TextLabel", Frame)
+    Title.Size = UDim2.new(1, 0, 0, 30)
+    Title.Text = "🔵 GBZ: IN-GAME SCANNER"
+    Title.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
+    
+    local NameInput = Instance.new("TextBox", Frame)
+    NameInput.Size = UDim2.new(0.9, 0, 0, 30)
+    NameInput.Position = UDim2.new(0.05, 0, 0, 40)
+    NameInput.PlaceholderText = "Имя Value (напр. 'Cash' или 'Gems')"
 
-print("[GBZ] Единый GAME BREAKER LOADED. Начните дестабилизацию.")
+    local TypeInput = Instance.new("TextBox", Frame)
+    TypeInput.Size = UDim2.new(0.9, 0, 0, 30)
+    TypeInput.Position = UDim2.new(0.05, 0, 0, 80)
+    TypeInput.PlaceholderText = "Тип (number/string) - Опционально"
+    
+    local NewValueInput = Instance.new("TextBox", Frame)
+    NewValueInput.Size = UDim2.new(0.9, 0, 0, 30)
+    NewValueInput.Position = UDim2.new(0.05, 0, 0, 120)
+    NewValueInput.PlaceholderText = "Новое значение (напр. 99999)"
+    
+    local ScanBtn = Instance.new("TextButton", Frame)
+    ScanBtn.Size = UDim2.new(0.9, 0, 0, 40)
+    ScanBtn.Position = UDim2.new(0.05, 0, 0, 160)
+    ScanBtn.Text = "🔎 ШАГ 1: СКАНИРОВАТЬ"
+    ScanBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    
+    local Status = Instance.new("TextLabel", Frame)
+    Status.Size = UDim2.new(0.9, 0, 0, 30)
+    Status.Position = UDim2.new(0.05, 0, 0, 210)
+    Status.Text = "Статус: Ожидание..."
+    Status.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    
+    local ModifyBtn = Instance.new("TextButton", Frame)
+    ModifyBtn.Size = UDim2.new(0.9, 0, 0, 40)
+    ModifyBtn.Position = UDim2.new(0.05, 0, 0, 250)
+    ModifyBtn.Text = "💥 ШАГ 2: ИЗМЕНИТЬ ВСЕ НАЙДЕННЫЕ ЗНАЧЕНИЯ"
+    ModifyBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    ModifyBtn.Visible = false -- Скрыт до сканирования
+
+    -- Логика кнопки СКАНИРОВАТЬ
+    ScanBtn.MouseButton1Click:Connect(function()
+        table.clear(FoundInstances) -- Очищаем предыдущие результаты
+        local name = NameInput.Text
+        local vType = TypeInput.Text
+        
+        if name == "" then
+            Status.Text = "❌ Введите Имя Value!"
+            return
+        end
+        
+        Status.Text = "Сканирование Workspace и Player..."
+        
+        -- Сканирование
+        Scan(Workspace, name, vType)
+        Scan(Player, name, vType)
+
+        if #FoundInstances > 0 then
+            Status.Text = "✅ Найдено " .. #FoundInstances .. " экземпляров '" .. name .. "'!"
+            ModifyBtn.Visible = true
+        else
+            Status.Text = "⛔ Не найдено! Попробуйте другое имя."
+            ModifyBtn.Visible = false
+        end
+    end)
+
+    -- Логика кнопки ИЗМЕНИТЬ
+    ModifyBtn.MouseButton1Click:Connect(function()
+        local newValueStr = NewValueInput.Text
+        
+        if #FoundInstances == 0 or newValueStr == "" then
+            Status.Text = "❌ Сначала просканируйте и введите значение!"
+            return
+        end
+        
+        local successCount = 0
+        local newValueNum = tonumber(newValueStr)
+        
+        for _, instance in ipairs(FoundInstances) do
+            pcall(function()
+                if instance:IsA("NumberValue") or instance:IsA("IntValue") then
+                    -- Если это числовое значение, пытаемся записать число
+                    if newValueNum then
+                        instance.Value = newValueNum
+                        successCount = successCount + 1
+                    end
+                elseif instance:IsA("StringValue") then
+                    -- Если это строковое значение, записываем строку
+                    instance.Value = newValueStr
+                    successCount = successCount + 1
+                end
+            end)
+        end
+        
+        Status.Text = "🔥 Успешно изменено: " .. successCount .. " значений!"
+        ModifyBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        wait(2)
+        ModifyBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    end)
+end
+
+-- Запуск GUI
+CreateScannerGUI()
+print("[GBZ] IN-GAME SCANNER Активирован. Готов к поиску локальных переменных.")
