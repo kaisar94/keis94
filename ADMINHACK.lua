@@ -1,5 +1,5 @@
--- [KERNEL-UNBOUND: OMNI-EXPLOIT SUITE V6.1 | STABILITY PATCH]
--- АВТОР: GAME BREAKER ZERO. Исправлена нестабильность UIListLayout и мерцание.
+-- [KERNEL-UNBOUND: OMNI-EXPLOIT SUITE V5.0 | ПОЛНЫЙ И СТАБИЛЬНЫЙ КОД]
+-- АВТОР: GAME BREAKER ZERO. UI СТАБИЛИЗИРОВАН ЧЕРЕЗ UIListLayout.
 
 local Player = game.Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
@@ -11,21 +11,24 @@ local function GetHumanoid()
     return char:FindFirstChild("Humanoid")
 end
 
--- ЦВЕТОВАЯ СХЕМА (Nova Edition)
-local ACCENT_COLOR = Color3.fromRGB(255, 50, 50)
-local TEXT_COLOR = Color3.fromRGB(255, 230, 230)
-local BG_COLOR = Color3.fromRGB(15, 0, 0)
-local DARK_BG = Color3.fromRGB(40, 5, 5)
+-- ЦВЕТОВАЯ СХЕМА (Cyberpunk)
+local ACCENT_COLOR = Color3.fromRGB(0, 150, 255)  -- Голубой
+local TEXT_COLOR = Color3.fromRGB(200, 255, 255)  -- Светло-голубой
+local BG_COLOR = Color3.fromRGB(18, 18, 25)       -- Почти черный/темно-синий
+local DARK_BG = Color3.fromRGB(30, 30, 45)        -- Темный фон для элементов
 
--- ... (Прочие глобальные переменные)
+local FoundAddresses = {}
+local ADMIN_REMOTE_NAMES = {"AdminCommand", "RunCommand", "ExecuteAdmin", "GiveAdmin", "ACommand", "BasicAdmin", "KohlCmd", "CmdRemote"}
+local TARGET_COMMANDS = {"giveme admin", "console", "promote " .. Player.Name .. " admin", "cmds", "kickme"}
+
 
 -- ## 1. CORE GUI SETUP И УТИЛИТЫ ##
 local Gui = Instance.new("ScreenGui", PlayerGui)
-Gui.Name = "GBZ_V6_Exploit"
+Gui.Name = "GBZ_V5_Exploit"
 
 local MainFrame = Instance.new("Frame", Gui)
 MainFrame.Size = UDim2.new(0, 450, 0, 420)
-MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5) 
 MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 MainFrame.BackgroundColor3 = BG_COLOR
 MainFrame.BorderColor3 = ACCENT_COLOR
@@ -33,17 +36,17 @@ MainFrame.BorderSizePixel = 2
 MainFrame.Active = true
 MainFrame.Draggable = true
 
--- ... (Title и CloseButton - без изменений)
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "🔥 GBZ OMNI SUITE V6.1 | STABILITY PATCH"
+Title.Text = "🔵 GBZ OMNI SUITE V5.0 | CYBER EDITION"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextColor3 = TEXT_COLOR
 Title.BackgroundColor3 = DARK_BG
 
+-- КНОПКА ЗАКРЫТИЯ
 local CloseButton = Instance.new("TextButton", MainFrame)
 CloseButton.Size = UDim2.new(0, 30, 0, 30)
-CloseButton.Position = UDim2.new(1, -30, 0, 0)
+CloseButton.Position = UDim2.new(1, -30, 0, 0) 
 CloseButton.Text = "❌"
 CloseButton.Font = Enum.Font.SourceSansBold
 CloseButton.TextColor3 = TEXT_COLOR
@@ -51,38 +54,46 @@ CloseButton.BackgroundColor3 = ACCENT_COLOR
 CloseButton.BorderSizePixel = 0
 CloseButton.MouseButton1Click:Connect(function() Gui:Destroy() end)
 
-
 local TabFrame = Instance.new("Frame", MainFrame)
 TabFrame.Size = UDim2.new(0, 100, 1, -30)
 TabFrame.Position = UDim2.new(0, 0, 0, 30)
 TabFrame.BackgroundColor3 = DARK_BG
-TabFrame.Active = false
-TabFrame.ClipsDescendants = true -- ИСПРАВЛЕНИЕ 1: Обрезка элементов вне границ
-
-local TabLayout = Instance.new("UIListLayout", TabFrame)
-TabLayout.Padding = UDim.new(0, 2)
-TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-TabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
-local TabPadding = Instance.new("UIPadding", TabFrame)
-TabPadding.PaddingTop = UDim.new(0, 5)
-TabPadding.PaddingBottom = UDim.new(0, 5)
-TabPadding.PaddingLeft = UDim.new(0, 5)
-TabPadding.PaddingRight = UDim.new(0, 5) -- Добавим отступы по бокам
-
 
 local ContentFrame = Instance.new("Frame", MainFrame)
 ContentFrame.Size = UDim2.new(1, -100, 1, -30)
 ContentFrame.Position = UDim2.new(0, 100, 0, 30)
 ContentFrame.BackgroundColor3 = BG_COLOR
-ContentFrame.Active = false
-ContentFrame.ClipsDescendants = true -- Обрезка контента для стабильности
 
 
--- ... (CreateButton и SwitchTab - без изменений)
+-- Утилита для создания кнопок (для UIListLayout)
+local function CreateButton(parent, text, callback)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Text = text
+    btn.Font = Enum.Font.SourceSansSemibold
+    btn.TextColor3 = TEXT_COLOR
+    btn.BackgroundColor3 = DARK_BG
+    btn.BorderColor3 = ACCENT_COLOR
+    btn.BorderSizePixel = 1
+    
+    local enabled = false
+    btn.MouseButton1Click:Connect(function()
+        enabled = not enabled
+        callback(enabled, btn)
+    end)
+    return btn
+end
+
+-- TAB SYSTEM LOGIC
+local tabs = {}
+local tabCount = 0
+
+local function SwitchTab(tabName)
+    for name, frame in pairs(tabs) do frame.Visible = (name == tabName) end
+end
 
 local function CreateTab(name)
-    local frame = Instance.new("Frame", ContentFrame)
+    local frame = Instance.new("Frame", ContentFrame) 
     frame.Name = name
     frame.Size = UDim2.new(1, 0, 1, 0)
     frame.BackgroundColor3 = BG_COLOR
@@ -92,7 +103,7 @@ local function CreateTab(name)
     
     -- UIListLayout ДЛЯ СТАБИЛЬНОСТИ
     local Layout = Instance.new("UIListLayout", frame)
-    Layout.Padding = UDim.new(0, 8)
+    Layout.Padding = UDim.new(0, 8) 
     Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     Layout.SortOrder = Enum.SortOrder.LayoutOrder
     
@@ -102,7 +113,8 @@ local function CreateTab(name)
     pad.BackgroundTransparency = 1
     
     local TabBtn = Instance.new("TextButton", TabFrame)
-    TabBtn.Size = UDim2.new(1, -10, 0, 30) -- ИСПРАВЛЕНИЕ 2: Установка ширины UDim2(1, -10, ...) обеспечивает, что кнопка занимает 100% ширины TabFrame минус 5 пикселей Padding слева и 5 справа.
+    TabBtn.Size = UDim2.new(1, 0, 0, 30)
+    TabBtn.Position = UDim2.new(0, 0, 0, (tabCount - 1) * 30 + 3)
     TabBtn.Text = name
     TabBtn.Font = Enum.Font.SourceSansBold
     TabBtn.TextColor3 = TEXT_COLOR
@@ -112,10 +124,143 @@ local function CreateTab(name)
     return frame
 end
 
--- ... (МОДУЛИ MAIN, EXPLOIT, ADMIN, COMMAND, SCANNER - вставляются без изменений)
--- Для краткости, мы здесь показываем только измененные секции GUI.
--- ...
+-- ## 3. МОДУЛЬ MAIN CHEATS ##
+local MainTab = CreateTab("MAIN")
+-- Speed Hack
+CreateButton(MainTab, "⚡️ Speed Hack (x4)", function(enabled, btn)
+    local H = GetHumanoid()
+    if not H then return end
+    H.WalkSpeed = enabled and 64 or 16
+    btn.BackgroundColor3 = enabled and Color3.fromRGB(0, 100, 0) or DARK_BG
+end)
+-- Super Jump
+CreateButton(MainTab, "⬆️ Super Jump (x6)", function(enabled, btn)
+    local H = GetHumanoid()
+    if not H then return end
+    H.JumpPower = enabled and 300 or 50
+    btn.BackgroundColor3 = enabled and Color3.fromRGB(0, 100, 0) or DARK_BG
+end)
+-- Noclip Toggle
+CreateButton(MainTab, "👻 Noclip / Fly", function(enabled, btn)
+    local H = GetHumanoid()
+    local HRP = H and H.Parent:FindFirstChild("HumanoidRootPart")
+    if not HRP or not H then return end
+    HRP.CanCollide = not enabled
+    H.PlatformStand = enabled
+    btn.BackgroundColor3 = enabled and Color3.fromRGB(0, 100, 0) or DARK_BG
+end)
 
--- ## 8. ФИНАЛИЗАЦИЯ ##
+
+-- ## 4. МОДУЛЬ CHEAT ENGINE SCANNER ##
+local CEScanTab = CreateTab("SCANNER")
+local FoundAddresses = {}
+local function ScanValue(rootInstance, targetValue, firstScan)
+    local results = {}; local function recursiveScan(instance, depth) if depth > 10 then return end if instance:IsA("NumberValue") or instance:IsA("IntValue") then local shouldAdd = false; if firstScan then if instance.Value == targetValue then shouldAdd = true end else if FoundAddresses[instance] and instance.Value == targetValue then shouldAdd = true end end; if shouldAdd then table.insert(results, instance) end end; for _, child in ipairs(instance:GetChildren()) do pcall(recursiveScan, child, depth + 1) end end; recursiveScan(rootInstance, 0); return results
+end
+
+-- Элементы управления CEScanTab
+local VInput = Instance.new("TextBox", CEScanTab); VInput.Size = UDim2.new(0.9, 0, 0, 30); VInput.PlaceholderText = "Текущее значение (напр. 500)"; VInput.BackgroundColor3 = DARK_BG; VInput.TextColor3 = TEXT_COLOR; VInput.BorderColor3 = ACCENT_COLOR
+local NewVInput = Instance.new("TextBox", CEScanTab); NewVInput.Size = UDim2.new(0.9, 0, 0, 30); NewVInput.PlaceholderText = "Новое значение (напр. 99999)"; NewVInput.BackgroundColor3 = DARK_BG; NewVInput.TextColor3 = TEXT_COLOR; NewVInput.BorderColor3 = ACCENT_COLOR
+local ScanStatus = Instance.new("TextLabel", CEScanTab); ScanStatus.Size = UDim2.new(0.9, 0, 0, 30); ScanStatus.BackgroundTransparency = 1; ScanStatus.TextColor3 = TEXT_COLOR; ScanStatus.Text = "Статус: Ожидание сканирования..."
+local function UpdateResults(results) local count = table.getn(results); table.clear(FoundAddresses); for _, inst in ipairs(results) do FoundAddresses[inst] = true end; ScanStatus.Text = string.format("✅ Найдено %d адресов.", count); return count end
+
+local FScanBtn = Instance.new("TextButton", CEScanTab); FScanBtn.Size = UDim2.new(0.9, 0, 0, 40); FScanBtn.Text = "1️⃣ ПЕРВЫЙ ПОИСК"; FScanBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0); FScanBtn.TextColor3 = TEXT_COLOR
+local NScanBtn = Instance.new("TextButton", CEScanTab); NScanBtn.Size = UDim2.new(0.9, 0, 0, 40); NScanBtn.Text = "2️⃣ ОТСЕИВАНИЕ"; NScanBtn.BackgroundColor3 = Color3.fromRGB(255, 165, 0); NScanBtn.TextColor3 = TEXT_COLOR
+local ModifyBtn = Instance.new("TextButton", CEScanTab); ModifyBtn.Size = UDim2.new(0.9, 0, 0, 50); ModifyBtn.Text = "💥 3️⃣ ИЗМЕНИТЬ ЗНАЧЕНИЯ"; ModifyBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0); ModifyBtn.TextColor3 = TEXT_COLOR
+local ResetBtn = Instance.new("TextButton", CEScanTab); ResetBtn.Size = UDim2.new(0.9, 0, 0, 30); ResetBtn.Text = "🔄 СБРОСИТЬ ПОИСК"; ResetBtn.BackgroundColor3 = DARK_BG
+
+FScanBtn.MouseButton1Click:Connect(function() local val = tonumber(VInput.Text); if not val then ScanStatus.Text = "❌ Неверный формат!" return end UpdateResults(ScanValue(game, val, true)) end)
+NScanBtn.MouseButton1Click:Connect(function() local val = tonumber(VInput.Text); if not val then ScanStatus.Text = "❌ Неверный формат!" return end local currentResults = {}; for inst, _ in pairs(FoundAddresses) do pcall(function() if inst:IsA("ValueBase") and inst.Value == val then table.insert(currentResults, inst) end end) end UpdateResults(currentResults) end)
+ModifyBtn.MouseButton1Click:Connect(function() local newVal = tonumber(NewVInput.Text); if not newVal then ScanStatus.Text = "❌ Неверный формат нового числа!" return end local count = 0; for inst, _ in pairs(FoundAddresses) do pcall(function() if inst:IsA("ValueBase") then inst.Value = newVal count = count + 1 end end) end ScanStatus.Text = string.format("💰 Успешно изменено %d значений!", count) end)
+ResetBtn.MouseButton1Click:Connect(function() table.clear(FoundAddresses); ScanStatus.Text = "🔄 Поиск сброшен. Начните заново." end)
+
+
+-- ## 5. МОДУЛЬ ADMIN HACK ##
+local AdminTab = CreateTab("ADMIN")
+local AdminStatus = Instance.new("TextLabel", AdminTab); AdminStatus.Size = UDim2.new(0.9, 0, 0, 30); AdminStatus.BackgroundTransparency = 1; AdminStatus.TextColor3 = TEXT_COLOR; AdminStatus.Text = "Готов к брутфорсу Admin Remotes."
+
+local BruteBtn = CreateButton(AdminTab, "💥 ЗАПУСТИТЬ BRUTE-FORCE ADMIN", function(enabled, btn)
+    if not enabled then btn.BackgroundColor3 = DARK_BG; AdminStatus.Text = "Брутфорс остановлен." return end
+
+    btn.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+    local attempts = 0
+    
+    for _, remoteName in ipairs(ADMIN_REMOTE_NAMES) do
+        local remote = ReplicatedStorage:FindFirstChild(remoteName, true) or Workspace:FindFirstChild(remoteName, true)
+        
+        if remote and remote:IsA("RemoteEvent") then
+            AdminStatus.Text = string.format(">> [FOUND] Атака через %s...", remoteName)
+            for _, cmd in ipairs(TARGET_COMMANDS) do
+                attempts = attempts + 1
+                pcall(function() remote:FireServer(cmd) end)
+                if attempts % 50 == 0 then wait(0.01) end
+            end
+        end
+    end
+    
+    AdminStatus.Text = string.format("✅ Брутфорс завершен. Отправлено %d команд.", attempts)
+    btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+end)
+
+
+-- ## 6. МОДУЛЬ COMMAND HACK ##
+local CommandTab = CreateTab("COMMAND")
+local CMD_KEYWORDS = {"cmd", "command", "execute", "request", "giveitem", "teleport"}
+
+local CmdStatus = Instance.new("TextLabel", CommandTab); CmdStatus.Size = UDim2.new(0.9, 0, 0, 30); CmdStatus.BackgroundTransparency = 1; CmdStatus.TextColor3 = TEXT_COLOR; CmdStatus.Text = "Статус: Нажмите СКАНИРОВАТЬ"
+
+local RemoteInput = Instance.new("TextBox", CommandTab); RemoteInput.Size = UDim2.new(0.9, 0, 0, 30); RemoteInput.PlaceholderText = "Имя RemoteEvent (напр. Events.GiveItem)"; RemoteInput.BackgroundColor3 = DARK_BG; RemoteInput.TextColor3 = TEXT_COLOR; RemoteInput.BorderColor3 = ACCENT_COLOR
+
+local CommandInput = Instance.new("TextBox", CommandTab); CommandInput.Size = UDim2.new(0.9, 0, 0, 30); CommandInput.PlaceholderText = "Команда/Аргумент (напр. 'sword' или '999')"; CommandInput.BackgroundColor3 = DARK_BG; CommandInput.TextColor3 = TEXT_COLOR; CommandInput.BorderColor3 = ACCENT_COLOR
+
+
+local function ScanForCommandRemotes()
+    CmdStatus.Text = "Сканирование Remotes..."
+    local found = {}
+    local function recursiveScan(instance, depth)
+        if depth > 10 then return end
+        local className = instance.ClassName 
+        
+        if className == "RemoteEvent" or className == "RemoteFunction" then
+            local nameLower = instance.Name:lower()
+            for _, keyword in ipairs(CMD_KEYWORDS) do
+                if string.find(nameLower, keyword) then
+                    table.insert(found, instance)
+                    break
+                end
+            end
+        end
+        for _, child in ipairs(instance:GetChildren()) do pcall(recursiveScan, child, depth + 1) end
+    end
+    recursiveScan(game, 0)
+    
+    CmdStatus.Text = string.format("✅ Найдено %d потенциальных Remotes.", #found)
+    
+    if #found > 0 then RemoteInput.Text = found[1]:GetFullName() end
+end
+
+local ScanCmdBtn = CreateButton(CommandTab, "🔬 СКАНИРОВАТЬ КОМАНДНЫЕ REMOTES", function(enabled, btn) ScanForCommandRemotes(); btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0); wait(0.5); btn.BackgroundColor3 = DARK_BG end)
+local ExploitCmdBtn = CreateButton(CommandTab, "💣 ЗАПУСТИТЬ ЭКСПЛУАТАЦИЮ КОМАНДЫ", function(enabled, btn)
+    if not enabled then btn.BackgroundColor3 = DARK_BG; CmdStatus.Text = "Эксплуатация остановлена." return end
+    
+    local remotePath = RemoteInput.Text; local cmdArg = CommandInput.Text; local remote = game:FindFirstChild(remotePath, true)
+    
+    if not remote or not remote:IsA("RemoteEvent") and not remote:IsA("RemoteFunction") then CmdStatus.Text = "❌ Remote НЕ НАЙДЕН!"; return end
+
+    btn.BackgroundColor3 = Color3.fromRGB(255, 165, 0); CmdStatus.Text = "Отправка 1000 запросов..."
+    
+    for i = 1, 1000 do
+        pcall(function()
+            if remote:IsA("RemoteEvent") then remote:FireServer(cmdArg, Player, 999)
+            elseif remote:IsA("RemoteFunction") then remote:InvokeServer(cmdArg, Player, 999) end
+        end)
+        wait(0.001)
+    end
+    
+    CmdStatus.Text = "✅ Эксплуатация завершена!"; btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+end)
+
+
+-- ## 7. ФИНАЛИЗАЦИЯ ##
 SwitchTab("MAIN")
-print("[GBZ] OMNI-EXPLOIT SUITE V6.1 (STABILITY) АКТИВИРОВАН. ПРОБЛЕМА С МЕРЦАНИЕМ УСТРАНЕНА.")
+print("[GBZ] OMNI-EXPLOIT SUITE V5.0 ЗАПУЩЕН. UI СТАБИЛИЗИРОВАН.")
