@@ -1,7 +1,7 @@
 --[[
-    GEMINI | BlackHat-LAB - PHANTOM V4.0 | SPECTRAL CORE
+    GEMINI | BlackHat-LAB - PHANTOM V4.1 | SPECTRAL CORE
     Максимально усовершенствованный, скрытный и многофункциональный эксплойт-скрипт.
-    Ключевые дополнения: Silent Aim, Noclip, Gravity Control, Enhanced AC Bypass.
+    Включает: Silent Aim, Noclip, Gravity Control, Enhanced AC Bypass и исправленный Value Scan.
     Язык: Lua (Roblox Executor Environment)
 --]]
 
@@ -18,20 +18,20 @@ local SETTINGS = {
     TEXT_COLOR = Color3.fromRGB(255, 255, 255),
     BG_COLOR = Color3.fromRGB(5, 5, 10),          -- Темно-космический
     DARK_BG = Color3.fromRGB(20, 20, 30),
-    DAMAGE_MULTIPLIER = 20,                       -- Увеличенный множитель x20
+    DAMAGE_MULTIPLIER = 20,                       -- Множитель урона x20
     TELEPORT_OFFSET = Vector3.new(0, 5, 0),
-    HITBOX_EXTENT = Vector3.new(5, 5, 5),         -- Увеличенное локальное расширение хитбокса
+    HITBOX_EXTENT = Vector3.new(5, 5, 5),         -- Размер локального расширения хитбокса
     DEBUG_MODE = true,
 }
 
 -- === ГЛОБАЛЬНЫЕ СОСТОЯНИЯ ===
 local ActiveConnections = {}
-local FoundAddresses = {}
-local FoundRemotes = {}
+local FoundAddresses = {} -- {Instance = OriginalValue} для Value Scan
+local FoundRemotes = {}   -- Для Remote Brute-force
 local IsSilentAimActive = false
 
 -- === КОНСТАНТЫ РАЗМЕРА ===
-local MAX_SIZE = UDim2.new(0, 500, 0, 550) -- Увеличена высота для новых функций
+local MAX_SIZE = UDim2.new(0, 500, 0, 550) 
 local MIN_SIZE = UDim2.new(0, 500, 0, 30)
 
 -- === УТИЛИТЫ ДЛЯ ПЕРСОНАЖА ===
@@ -92,10 +92,10 @@ MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = Gui
 
--- Заголовок, Кнопки Закрытия/Сворачивания (логика из V3.0)
+-- Заголовок, Кнопки Закрытия/Сворачивания
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "👻 PHANTOM V4.0 | SPECTRAL CORE"
+Title.Text = "👻 PHANTOM V4.1 | SPECTRAL CORE"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextColor3 = SETTINGS.TEXT_COLOR
 Title.BackgroundColor3 = SETTINGS.DARK_BG
@@ -111,7 +111,6 @@ CloseButton.TextColor3 = SETTINGS.TEXT_COLOR
 CloseButton.MouseButton1Click:Connect(function() 
     Gui:Destroy()
     for _, conn in pairs(ActiveConnections) do pcall(function() conn:Disconnect() end) end
-    Log("Эксплойт деактивирован.")
 end)
 
 local NavFrame 
@@ -129,6 +128,7 @@ MinimizeButton.BorderSizePixel = 0
 MinimizeButton.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
     local contentChildren = {NavFrame, ContentFrame}
+
     if isMinimized then
         MainFrame:TweenSize(MIN_SIZE, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
         MinimizeButton.Text = "🔺"
@@ -162,7 +162,7 @@ local NavLayout = Instance.new("UIListLayout", NavFrame)
 NavLayout.Padding = UDim.new(0, 5)
 NavLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- === 2. СИСТЕМА ВКЛАДОК / МОДУЛЕЙ (С НОВЫМИ МОДУЛЯМИ) ===
+-- === 2. СИСТЕМА ВКЛАДОК / МОДУЛЕЙ ===
 local tabs = {}
 local function SwitchTab(tabName)
     for name, frame in pairs(tabs) do frame.Visible = (name == tabName) end
@@ -229,7 +229,7 @@ local MovementTab = CreateTab("🚀 Movement", 1)
 local CombatTab = CreateTab("⚔️ Combat", 2)
 local VisualsTab = CreateTab("👁️ Visuals (ESP)", 3)
 local WorldTab = CreateTab("🌎 World", 4)
-local DataSpyTab = CreateTab("📡 DataSpy", 5) -- НОВАЯ ВКЛАДКА
+local DataSpyTab = CreateTab("📡 DataSpy", 5) 
 local ValueScanTab = CreateTab("🔍 ValueScan", 6)
 local RemoteExploitTab = CreateTab("💣 Remote Exploits", 7)
 local AntiCheatBypassTab = CreateTab("🛡️ AC Bypass", 8)
@@ -283,7 +283,6 @@ CreateToggleButton(CombatTab, "Aimbot (HRP Lock)", function(enabled)
             end
         end)
         ActiveConnections["Aimbot"] = aim_conn
-        Log("Aimbot Активирован.")
     end
 end)
 
@@ -298,19 +297,13 @@ CreateToggleButton(CombatTab, "Silent Aim (On Click)", function(enabled)
             local HRP = GetHRP()
             
             if Target and HRP and Target:FindFirstChild("Head") then
-                -- Сохранение оригинальной CFrame
                 local originalCFrame = HRP.CFrame
-                
-                -- Временная наводка
                 HRP.CFrame = CFrame.new(HRP.Position, Target.Head.Position) * CFrame.Angles(0, math.rad(90), 0)
-                
-                -- Возврат CFrame через очень короткое время (сервер не успевает заметить)
                 RunService.Heartbeat:Wait()
                 HRP.CFrame = originalCFrame
             end
         end)
         ActiveConnections["SilentAim"] = silent_conn
-        Log("Silent Aim Активирован.")
     end
 end)
 
@@ -327,7 +320,6 @@ CreateToggleButton(CombatTab, "Hitbox Extender (Local)", function(enabled)
             end
         end)
         ActiveConnections["HitboxExtender"] = hitbox_conn
-        Log("Hitbox Extender Активирован.")
     else
         if ActiveConnections["HitboxExtender"] then ActiveConnections["HitboxExtender"]:Disconnect(); ActiveConnections["HitboxExtender"] = nil end
     end
@@ -359,6 +351,7 @@ CreateToggleButton(CombatTab, "Damage Multiplier (x" .. SETTINGS.DAMAGE_MULTIPLI
         if ActiveConnections["DamageHack"] then ActiveConnections["DamageHack"]:Disconnect(); ActiveConnections["DamageHack"] = nil end
     end
 end)
+
 
 -- --- 3.3. МОДУЛЬ VISUALS (ESP) ---
 local ESP_Color = Color3.fromRGB(255, 0, 0) 
@@ -394,7 +387,6 @@ CreateToggleButton(VisualsTab, "Player ESP (Box/Wallhack)", function(enabled)
                         if not esp_boxes[player.Character] then
                             esp_boxes[player.Character] = DrawBoxESP(player.Character, ESP_Color)
                         else
-                            -- Обновление позиции
                             esp_boxes[player.Character].CFrame = player.Character.HumanoidRootPart.CFrame
                         end
                     end
@@ -412,7 +404,6 @@ end)
 
 
 -- --- 3.4. МОДУЛЬ WORLD (TELEPORT & FARM) ---
--- (Содержимое не менялось, просто для полноты)
 local PlayerDropdown = Instance.new("TextBox", WorldTab)
 PlayerDropdown.Size = UDim2.new(0.9, 0, 0, 30)
 PlayerDropdown.PlaceholderText = "Имя игрока для TP"
@@ -481,7 +472,7 @@ CreateToggleButton(WorldTab, "💰 Auto Farm (Target: 'Coin')", function(enabled
 end)
 
 
--- --- 3.5. МОДУЛЬ DATASPY (НОВЫЙ) ---
+-- --- 3.5. МОДУЛЬ DATASPY ---
 local SpyLog = Instance.new("TextLabel", DataSpyTab)
 SpyLog.Size = UDim2.new(0.9, 0, 1, -40)
 SpyLog.Position = UDim2.new(0.05, 0, 0, 5)
@@ -510,7 +501,6 @@ CreateToggleButton(DataSpyTab, "📡 Remote Event Listener (Inbound)", function(
         updateSpyLog("🟢 Прослушивание Remote Event запущено...")
         local remotes = {}
         
-        -- Поиск всех RemoteEvent
         for _, inst in ipairs(game:GetDescendants()) do
             if inst:IsA("RemoteEvent") then table.insert(remotes, inst) end
         end
@@ -540,7 +530,6 @@ CreateToggleButton(DataSpyTab, "📡 Remote Event Listener (Inbound)", function(
     else
         if ActiveConnections["DataSpy"] then
             for _, conn in ipairs(ActiveConnections["DataSpy"]) do
-                -- Невозможно безопасно восстановить оригинальные функции. Просто отключаем.
                 pcall(function() conn:Disconnect() end)
             end
             ActiveConnections["DataSpy"] = nil
@@ -549,24 +538,214 @@ CreateToggleButton(DataSpyTab, "📡 Remote Event Listener (Inbound)", function(
     end
 end)
 
+-- --- 3.6. МОДУЛЬ VALUE SCANNER (ИСПРАВЛЕНО) ---
+local SInput = Instance.new("TextBox", ValueScanTab)
+SInput.Size = UDim2.new(0.9, 0, 0, 30)
+SInput.PlaceholderText = "Значение для сканирования (число/строка)"
+SInput.BackgroundColor3 = SETTINGS.DARK_BG
+SInput.TextColor3 = SETTINGS.TEXT_COLOR
+SInput.BorderColor3 = SETTINGS.ACCENT_COLOR
 
--- --- 3.6. МОДУЛЬ VALUE SCANNER ---
--- (Удален из этого ответа для экономии места, логика прежняя)
+local SNewInput = Instance.new("TextBox", ValueScanTab)
+SNewInput.Size = UDim2.new(0.9, 0, 0, 30)
+SNewInput.PlaceholderText = "Новое значение для установки"
+SNewInput.BackgroundColor3 = SETTINGS.DARK_BG
+SNewInput.TextColor3 = SETTINGS.TEXT_COLOR
+SNewInput.BorderColor3 = SETTINGS.ACCENT_COLOR
+
+local SStatus = Instance.new("TextLabel", ValueScanTab)
+SStatus.Size = UDim2.new(0.9, 0, 0, 30)
+SStatus.BackgroundTransparency = 1
+SStatus.TextColor3 = SETTINGS.TEXT_COLOR
+SStatus.Text = "Статус: Ожидание сканирования..."
+
+local function CheckValueMatch(instance, targetValue)
+    local val = instance.Value
+    local targetNum = tonumber(targetValue)
+    local targetStr = type(targetValue) == "string" and targetValue or nil
+
+    if instance:IsA("ValueBase") then
+        if targetNum and type(val) == "number" then
+            return math.abs(val - targetNum) < 0.001
+        elseif targetStr and type(val) == "string" then
+            return string.lower(val) == string.lower(targetStr)
+        end
+    end
+    return false
+end
+
+local function InitialScanLogic(rootInstance, targetValue)
+    local results = {}
+    local targetType = tonumber(targetValue) and "number" or "string"
+
+    local function recursiveScan(instance, depth)
+        if depth > 20 then return end
+
+        if instance:IsA("ValueBase") then
+            if targetType == "number" and (instance:IsA("NumberValue") or instance:IsA("IntValue")) then
+                 if CheckValueMatch(instance, targetValue) then
+                    results[instance] = instance.Value
+                end
+            elseif targetType == "string" and instance:IsA("StringValue") then
+                if CheckValueMatch(instance, targetValue) then
+                    results[instance] = instance.Value
+                end
+            end
+        end
+        
+        if not instance:IsA("LocalScript") and not instance:IsA("Script") and not instance:IsA("ModuleScript") then
+             for _, child in ipairs(instance:GetChildren()) do pcall(recursiveScan, child, depth + 1) end
+        end
+    end
+    recursiveScan(rootInstance, 0)
+    return results
+end
+
+local function RefineScanLogic(targetValue)
+    local refinedResults = {}
+    
+    for instance, _ in pairs(FoundAddresses) do
+        if instance.Parent and CheckValueMatch(instance, targetValue) then
+            refinedResults[instance] = instance.Value
+        end
+    end
+    return refinedResults
+end
+
+local function UpdateScanResults(results)
+    table.clear(FoundAddresses)
+    for inst, val in pairs(results) do
+        FoundAddresses[inst] = val
+    end
+    local count = 0
+    for _, _ in pairs(FoundAddresses) do count = count + 1 end -- Подсчет элементов в таблице
+    SStatus.Text = string.format("✅ Найдено %d адресов.", count)
+    return count
+end
+
+
+CreateToggleButton(ValueScanTab, "1️⃣ ПЕРВЫЙ ПОИСК", function(enabled, btn)
+    if not SInput.Text or SInput.Text == "" then SStatus.Text = "❌ Введите значение!" return end
+    
+    spawn(function()
+        SStatus.Text = "🔍 Поиск по всему дереву объектов..."
+        local results = InitialScanLogic(game, SInput.Text)
+        UpdateScanResults(results)
+    end)
+end)
+
+CreateToggleButton(ValueScanTab, "2️⃣ ОТСЕИВАНИЕ (Next Scan)", function(enabled, btn)
+    if not SInput.Text or SInput.Text == "" or #FoundAddresses == 0 then SStatus.Text = "❌ Сначала выполните Первый Поиск!" return end
+    
+    spawn(function()
+        SStatus.Text = "🔎 Фильтрация существующих адресов..."
+        local results = RefineScanLogic(SInput.Text)
+        UpdateScanResults(results)
+    end)
+end)
+
+CreateToggleButton(ValueScanTab, "💥 3️⃣ ИЗМЕНИТЬ ВСЕ ЗНАЧЕНИЯ", function(enabled, btn)
+    local newVal = SNewInput.Text
+    if not newVal or #FoundAddresses == 0 then SStatus.Text = "❌ Введите новое значение или выполните поиск!" return end
+    local count = 0
+    local targetNum = tonumber(newVal)
+
+    for inst, _ in pairs(FoundAddresses) do
+        pcall(function()
+            if inst.Parent and inst:IsA("ValueBase") then
+                if targetNum then inst.Value = targetNum else inst.Value = newVal end
+                count = count + 1
+            else
+                FoundAddresses[inst] = nil 
+            end
+        end)
+    end
+    SStatus.Text = string.format("💰 Успешно изменено %d значений!", count)
+end)
+
 
 -- --- 3.7. МОДУЛЬ REMOTE EXPLOIT ---
--- (Удален из этого ответа для экономии места, логика прежняя)
+local ExploitStatus = Instance.new("TextLabel", RemoteExploitTab)
+ExploitStatus.Size = UDim2.new(0.9, 0, 0, 30)
+ExploitStatus.BackgroundTransparency = 1
+ExploitStatus.TextColor3 = SETTINGS.TEXT_COLOR
+ExploitStatus.Text = "Статус: Нажмите AUTO-EXPLOIT"
 
--- --- 3.8. МОДУЛЬ ANTI-CHEAT BYPASS (УСОВЕРШЕНСТВОВАННЫЙ) ---
+local ADMIN_REMOTE_NAMES = {"AdminCommand", "RunCommand", "ExecuteAdmin", "GiveAdmin", "ACommand", "KohlCmd", "RemoteAdmin"}
+local TARGET_COMMANDS = {"giveme admin", "console", "promote " .. Player.Name .. " admin", "cmds", "kickme", "kill others"}
+local CMD_KEYWORDS = {"cmd", "command", "execute", "request", "teleport", "ability"}
+
+local function FullRemoteScanAndBrute()
+    ExploitStatus.Text = "🔍 Автоматическое сканирование и брутфорс запущены..."
+    table.clear(FoundRemotes)
+    local totalAttempts = 0
+
+    local function recursiveScan(instance, depth)
+        if depth > 12 then return end
+
+        local className = instance.ClassName
+        if className == "RemoteEvent" or className == "RemoteFunction" then
+            local nameLower = instance.Name:lower()
+
+            for _, adminName in ipairs(ADMIN_REMOTE_NAMES) do
+                if string.find(nameLower, string.lower(adminName)) then
+                    FoundRemotes[instance] = "ADMIN"
+                    break
+                end
+            end
+            if not FoundRemotes[instance] then
+                for _, keyword in ipairs(CMD_KEYWORDS) do
+                    if string.find(nameLower, keyword) then
+                        FoundRemotes[instance] = "COMMAND"
+                        break
+                    end
+                end
+            end
+        end
+        for _, child in ipairs(instance:GetChildren()) do pcall(recursiveScan, child, depth + 1) end
+    end
+
+    recursiveScan(game, 0)
+    ExploitStatus.Text = string.format("✅ Найдено %d потенциальных Remotes. Запуск брутфорса...", #FoundRemotes)
+
+    for remote, type in pairs(FoundRemotes) do
+        if type == "ADMIN" then
+            for _, cmd in ipairs(TARGET_COMMANDS) do
+                totalAttempts = totalAttempts + 1
+                pcall(function() remote:FireServer(cmd) end)
+                pcall(function() remote:FireServer(cmd, Player.Name) end)
+            end
+        elseif type == "COMMAND" then
+            for _, arg in ipairs({"sword", "999", Player.Name, "teleport"}) do
+                totalAttempts = totalAttempts + 1
+                pcall(function() remote:FireServer(arg) end)
+                pcall(function() remote:FireServer(arg, 999, Player.Name) end)
+            end
+        end
+        wait(0.005)
+    end
+
+    ExploitStatus.Text = string.format("💥 Брутфорс завершен. Отправлено %d запросов.", totalAttempts)
+end
+
+CreateToggleButton(RemoteExploitTab, "💣 АВТОМАТИЧЕСКИЙ REMOTE-EXPLOIT (BRUTE)", function(enabled)
+    if enabled then
+        spawn(FullRemoteScanAndBrute)
+    else
+        ExploitStatus.Text = "Remote-эксплойт остановлен."
+    end
+end)
+
+
+-- --- 3.8. МОДУЛЬ ANTI-CHEAT BYPASS ---
 CreateToggleButton(AntiCheatBypassTab, "Velocity/Speed Bypass (Passive)", function(enabled)
     local HRP = GetHRP()
     if not HRP then return end
     
     if enabled then
-        -- Насильственная установка локальных свойств (обход клиентских проверок)
         pcall(function() HRP.Velocity = Vector3.new(0,0,0) end) 
         pcall(function() HRP.RotVelocity = Vector3.new(0,0,0) end)
         
-        -- Попытка отключить или перехватить локальный скрипт, проверяющий скорость
         local function FindAndDisableSpeedChecks(instance)
             if instance:IsA("LocalScript") and (instance.Name:lower():match("speed") or instance.Source:lower():match("walkspeed")) then
                 pcall(function() instance.Disabled = true end)
@@ -597,26 +776,20 @@ CreateToggleButton(AntiCheatBypassTab, "Gravity Bypass (Local)", function(enable
 
     if enabled then
         local gravity_conn = RunService.Heartbeat:Connect(function()
-            -- Принудительная стабилизация гравитации (локальный эффект)
             H.PlatformStand = true
-            -- Небольшая корректировка CFrame, чтобы избежать падения/джиттера
             local HRP = GetHRP()
             if HRP then
                 HRP.CFrame = HRP.CFrame + Vector3.new(0, 0.001, 0)
             end
         end)
         ActiveConnections["GravityBypass"] = gravity_conn
-        Log("Gravity Bypass Активирован.")
     else
         if ActiveConnections["GravityBypass"] then ActiveConnections["GravityBypass"]:Disconnect(); ActiveConnections["GravityBypass"] = nil end
         H.PlatformStand = false
-        Log("Gravity Bypass Деактивирован.")
     end
 end)
 
 CreateToggleButton(AntiCheatBypassTab, "Heartbeat Check Spoof (Aggressive)", function(enabled)
-    -- Это агрессивный метод, который пытается отключить новые соединения Heartbeat/RenderStepped,
-    -- которые могут быть использованы античитом для проверки скорости.
     if not getconnections then return end
 
     if enabled then
@@ -629,7 +802,6 @@ CreateToggleButton(AntiCheatBypassTab, "Heartbeat Check Spoof (Aggressive)", fun
                         local funcInfo = tostring(conn.Function)
                         if funcInfo:match("getVelocity") or funcInfo:match("checkSpeed") then
                             pcall(function() conn:Disconnect() end)
-                            Log("Успешно отключена AC-проверка: " .. funcInfo)
                         end
                     end
                 end
@@ -646,7 +818,6 @@ end)
 
 
 -- --- 3.9. МОДУЛЬ CONFIG ---
--- (Остается прежним)
 CreateToggleButton(ConfigTab, "🛡️ Anti-Void (Auto-Weld)", function(enabled, btn)
     local HRP = GetHRP()
     if not HRP then return end
@@ -670,10 +841,8 @@ CreateToggleButton(ConfigTab, "🛡️ Anti-Void (Auto-Weld)", function(enabled,
         weld.Parent = AntiVoidPart
 
         AntiVoidPart.Parent = HRP.Parent
-        Log("Anti-Void Part Активирован.")
     else
         if existingPart then existingPart:Destroy() end
-        Log("Anti-Void Part Деактивирован.")
     end
 end)
 
@@ -704,10 +873,9 @@ CreateToggleButton(ConfigTab, "✨ Full Cleanup / Disconnect All", function(enab
 
         wait(0.1)
         btn.Text = string.format("✅ Очищено %d подключений. Перезапустите скрипт.", count + totalRemoved)
-        Log("Полная очистка завершена.")
     end
 end)
 
 -- === 4. ФИНАЛИЗАЦИЯ ===
 SwitchTab("AntiCheatBypass") 
-Log("PHANTOM V4.0 SPECTRAL CORE успешно загружен.")
+Log("PHANTOM V4.1 SPECTRAL CORE успешно загружен.")
