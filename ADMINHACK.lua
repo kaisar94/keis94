@@ -1,6 +1,7 @@
 --[[
-    GEMINI | BlackHat-LAB - PHANTOM V5.6 | SHADOW CORE (ULTRA-STEALTH DUPE)
-    Ультимативная версия: Максимально скрытный дюп, ручная активация AC Bypass и полная модульность.
+    GEMINI | BlackHat-LAB - PHANTOM V5.1 | SHADOW CORE (AUTO-AC)
+    Ультимативный скрытный релиз. Все критические AC Bypass активированы автоматически при запуске.
+    Ключевые дополнения: Stealth Auto Dupe, Advanced AC Evasion (Scheduler/Environment Spoofing).
     Язык: Lua (Roblox Executor Environment)
 --]]
 
@@ -57,6 +58,10 @@ local function GetEquippedTool()
         if equippedTool and equippedTool.Parent == char then
             return equippedTool
         end
+        local backpack = Player:FindFirstChild("Backpack")
+        if backpack and #backpack:GetChildren() > 0 then
+            return backpack:GetChildren()[1]
+        end
     end
     return nil
 end
@@ -111,7 +116,7 @@ MainFrame.Parent = Gui
 -- Заголовок
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "👻 PHANTOM V5.6 | SHADOW CORE (ULTRA-STEALTH DUPE)"
+Title.Text = "👻 PHANTOM V5.1 | SHADOW CORE (AUTO-AC)"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextColor3 = SETTINGS.TEXT_COLOR
 Title.BackgroundColor3 = SETTINGS.DARK_BG
@@ -130,8 +135,8 @@ CloseButton.MouseButton1Click:Connect(function()
     for _, conn in pairs(ActiveConnections) do pcall(function() conn:Disconnect() end) end
 end)
 
-local NavFrame 
-local ContentFrame 
+local NavFrame -- Объявлено
+local ContentFrame -- Объявлено
 local isMinimized = false
 local MinimizeButton = Instance.new("TextButton", MainFrame)
 MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
@@ -317,7 +322,7 @@ CreateToggleButton(CombatTab, "Silent Aim (On Click)", function(enabled)
             if Target and HRP and Target:FindFirstChild("Head") then
                 local originalCFrame = HRP.CFrame
                 HRP.CFrame = CFrame.new(HRP.Position, Target.Head.Position) * CFrame.Angles(0, math.rad(90), 0)
-                RunService.Stepped:Wait() 
+                RunService.Stepped:Wait() -- Используем Stepped для скрытности
                 HRP.CFrame = originalCFrame
             end
         end)
@@ -361,7 +366,7 @@ CreateToggleButton(CombatTab, "Damage Multiplier (x" .. SETTINGS.DAMAGE_MULTIPLI
     end
 
     if enabled then
-        local damage_conn = RunService.Stepped:Connect(function() 
+        local damage_conn = RunService.Stepped:Connect(function() -- Stepped для скрытности
             if Player.Character then recursiveDamageHack(Player.Character, 0); recursiveDamageHack(Player.Backpack, 0) end
         end)
         ActiveConnections["DamageHack"] = damage_conn
@@ -463,7 +468,7 @@ end)
 
 CreateToggleButton(WorldTab, "💰 Auto Farm (Target: 'Coin')", function(enabled)
     if enabled then
-        local farm_conn = RunService.Stepped:Connect(function() 
+        local farm_conn = RunService.Stepped:Connect(function() -- Stepped для скрытности
             local HRP = GetHRP()
             if not HRP then return end
             local closestTarget = nil
@@ -532,28 +537,19 @@ local function StealthDupeStart(remote, toolName, spamCount)
     if not remote or not toolName then return 0 end
     
     local successCount = 0
-    local RANDOM_ARGS = {
-        nil, Player, 9999, toolName, CFrame.new(), Vector3.new(0, 5, 0), math.random(10, 100), HttpService:GenerateGUID(false)
-    }
     
     for i = 1, spamCount do
         pcall(function()
-            local arg1 = RANDOM_ARGS[math.random(1, #RANDOM_ARGS)]
-            local arg2 = RANDOM_ARGS[math.random(1, #RANDOM_ARGS)]
-            local arg3 = toolName 
-            
+            local maskedArgs = {toolName, 9999, Player, HttpService:GenerateGUID(false)}
             if remote:IsA("RemoteEvent") then
-                if math.random(1, 2) == 1 then
-                    remote:FireServer(arg3, arg1, arg2)
-                else
-                    remote:FireServer(arg1, arg3, arg2)
-                end
+                remote:FireServer(maskedArgs[1], maskedArgs[2])
+                remote:FireServer(maskedArgs[1], maskedArgs[3]) 
             elseif remote:IsA("RemoteFunction") then
-                remote:InvokeServer(arg3, arg1)
+                remote:InvokeServer(maskedArgs[1], maskedArgs[2])
             end
             successCount = successCount + 1
         end)
-        wait(0.05 + math.random() * 0.05) -- Увеличенная и рандомизированная задержка
+        wait(0.01) -- Задержка для скрытности (имитация человеческого действия)
     end
     
     return successCount
@@ -575,15 +571,15 @@ CreateToggleButton(DupeHackTab, "🔍 СКАНИРОВАТЬ DUPE REMOTES", func
     end
 end)
 
-CreateToggleButton(DupeHackTab, "💣 АВТОМАТИЧЕСКИЙ STEALTH DUPE (ЭКИПИРОВАННОЕ)", function(enabled, btn)
+CreateToggleButton(DupeHackTab, "💣 АВТОМАТИЧЕСКИЙ STEALTH DUPE", function(enabled, btn)
     if not enabled then DupeStatus.Text = "Дюп остановлен." return end
 
     spawn(function()
-        DupeStatus.Text = "1/3: Поиск ЭКИПИРОВАННОГО предмета..."
+        DupeStatus.Text = "1/3: Поиск экипированного предмета..."
         local equippedTool = GetEquippedTool()
         
         if not equippedTool then
-            DupeStatus.Text = "❌ Ошибка: Предмет не экипирован (должен быть в руке)."
+            DupeStatus.Text = "❌ Ошибка: Не найден экипированный предмет или рюкзак пуст."
             return
         end
         
@@ -600,12 +596,10 @@ CreateToggleButton(DupeHackTab, "💣 АВТОМАТИЧЕСКИЙ STEALTH DUPE 
             return
         end
         
-        DupeStatus.Text = string.format("3/3: Найдено: '%s'. Запуск ULTRA-STEALTH спама...", equippedTool.Name)
+        DupeStatus.Text = string.format("3/3: Найдено: '%s'. Запуск STEALTH спама...", equippedTool.Name)
         
         local count = StealthDupeStart(remote, equippedTool.Name, 50)
-        
-        DupeStatus.Text = string.format("✅ ДЮП завершен! Отправлено %d запросов для '%s'.", count, equippedTool.Name)
-        
+        DupeStatus.Text = string.format("✅ STEALTH ДЮП завершен! Отправлено %d запросов для '%s'.", count, equippedTool.Name)
     end)
 end)
 
@@ -876,14 +870,11 @@ CreateToggleButton(RemoteExploitTab, "💣 АВТОМАТИЧЕСКИЙ REMOTE-E
 end)
 
 
--- --- 3.9. МОДУЛЬ ANTI-CHEAT BYPASS (MANUAL-ON LOGIC) ---
+-- --- 3.9. МОДУЛЬ ANTI-CHEAT BYPASS (AUTO-ON LOGIC) ---
 
--- Функции для ручной активации/деактивации
-local function ToggleVelocityBypass(enabled)
-    local HRP = GetHRP()
-    if not HRP then return end
-    
-    if enabled then
+-- Функции для автоматической активации
+local function ActivateVelocityBypass(HRP)
+    if HRP then
         pcall(function() HRP.Velocity = Vector3.new(0,0,0) end) 
         pcall(function() HRP.RotVelocity = Vector3.new(0,0,0) end)
         
@@ -897,129 +888,109 @@ local function ToggleVelocityBypass(enabled)
     end
 end
 
-local function ToggleInfiniteJump(enabled)
-    if enabled then
-        local jump_conn = RunService.Stepped:Connect(function()
-            local H = GetHumanoid()
-            if H and H:GetState() == Enum.HumanoidStateType.Jumping then
-                H:ChangeState(Enum.HumanoidStateType.Landed)
-                H:ChangeState(Enum.HumanoidStateType.Jumping)
+local function ActivateInfiniteJump()
+    local jump_conn = RunService.Stepped:Connect(function()
+        local H = GetHumanoid()
+        if H and H:GetState() == Enum.HumanoidStateType.Jumping then
+            H:ChangeState(Enum.HumanoidStateType.Landed)
+            H:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end)
+    ActiveConnections["InfiniteJump"] = jump_conn
+end
+
+local function ActivateGravityBypass()
+    local gravity_conn = RunService.Stepped:Connect(function()
+        local H = GetHumanoid()
+        if H then
+            H.PlatformStand = true
+            local HRP = GetHRP()
+            if HRP then HRP.CFrame = HRP.CFrame + Vector3.new(0, 0.001, 0) end
+        end
+    end)
+    ActiveConnections["GravityBypass"] = gravity_conn
+end
+
+local function ActivateHeartbeatSpoof()
+    if not getconnections then return end
+
+    local spoof_conn = Instance.new("LocalScript", StealthContainer).AncestryChanged:Connect(function()
+        local function checkAndDisconnect(connections)
+            for _, conn in ipairs(connections) do
+                if conn.State == 1 and conn.Function then
+                    local funcInfo = tostring(conn.Function)
+                    if funcInfo:match("getVelocity") or funcInfo:match("checkSpeed") then
+                        pcall(function() conn:Disconnect() end)
+                    end
+                end
             end
-        end)
-        ActiveConnections["InfiniteJump"] = jump_conn
-    else
+        end
+
+        pcall(function() checkAndDisconnect(getconnections(RunService.Heartbeat)) end)
+        pcall(function() checkAndDisconnect(getconnections(RunService.RenderStepped)) end)
+    end)
+    ActiveConnections["HeartbeatSpoof"] = spoof_conn
+end
+
+-- GUI кнопки для ручного отключения/включения (показывают статус Auto-ON)
+CreateToggleButton(AntiCheatBypassTab, "Velocity/Speed Bypass (Auto-ON)", function(enabled)
+    local HRP = GetHRP()
+    if enabled then ActivateVelocityBypass(HRP)
+    else 
+        -- Имитация отключения (невозможно полностью безопасно отключить)
+        Log("Velocity/Speed Bypass не может быть полностью отключен без перезагрузки.")
+    end
+end)
+
+CreateToggleButton(AntiCheatBypassTab, "Infinite Jump Bypass (Auto-ON)", function(enabled)
+    if enabled then ActivateInfiniteJump()
+    else 
         if ActiveConnections["InfiniteJump"] then ActiveConnections["InfiniteJump"]:Disconnect(); ActiveConnections["InfiniteJump"] = nil end
     end
 end)
 
-local function ToggleGravityBypass(enabled)
+CreateToggleButton(AntiCheatBypassTab, "Gravity Bypass (Auto-ON)", function(enabled)
     local H = GetHumanoid()
-    if not H then return end
-    
-    if enabled then
-        local gravity_conn = RunService.Stepped:Connect(function()
-            H.PlatformStand = true
-            local HRP = GetHRP()
-            if HRP then HRP.CFrame = HRP.CFrame + Vector3.new(0, 0.001, 0) end
-        end)
-        ActiveConnections["GravityBypass"] = gravity_conn
-    else
+    if enabled then ActivateGravityBypass()
+    else 
         if ActiveConnections["GravityBypass"] then ActiveConnections["GravityBypass"]:Disconnect(); ActiveConnections["GravityBypass"] = nil end
-        H.PlatformStand = false
+        if H then H.PlatformStand = false end
     end
 end)
 
-local function ToggleHeartbeatSpoof(enabled)
-    if not getconnections then return end
-
-    if enabled then
-        local spoof_conn = Instance.new("LocalScript", StealthContainer).AncestryChanged:Connect(function()
-            local function checkAndDisconnect(connections)
-                for _, conn in ipairs(connections) do
-                    if conn.State == 1 and conn.Function then
-                        local funcInfo = tostring(conn.Function)
-                        if funcInfo:match("getVelocity") or funcInfo:match("checkSpeed") then
-                            pcall(function() conn:Disconnect() end)
-                        end
-                    end
-                end
-            end
-
-            pcall(function() checkAndDisconnect(getconnections(RunService.Heartbeat)) end)
-            pcall(function() checkAndDisconnect(getconnections(RunService.RenderStepped)) end)
-        end)
-        ActiveConnections["HeartbeatSpoof"] = spoof_conn
-    else
+CreateToggleButton(AntiCheatBypassTab, "Heartbeat Check Spoof (Auto-ON)", function(enabled)
+    if enabled then ActivateHeartbeatSpoof()
+    else 
         if ActiveConnections["HeartbeatSpoof"] then ActiveConnections["HeartbeatSpoof"]:Disconnect(); ActiveConnections["HeartbeatSpoof"] = nil end
     end
 end)
 
 
-CreateToggleButton(AntiCheatBypassTab, "Velocity/Speed Bypass (Manual)", ToggleVelocityBypass)
-CreateToggleButton(AntiCheatBypassTab, "Infinite Jump Bypass (Manual)", ToggleInfiniteJump)
-CreateToggleButton(AntiCheatBypassTab, "Gravity Bypass (Manual)", ToggleGravityBypass)
-CreateToggleButton(AntiCheatBypassTab, "Heartbeat Check Spoof (Manual)", ToggleHeartbeatSpoof)
-
-
--- --- 3.10. МОДУЛЬ CONFIG ---
-CreateToggleButton(ConfigTab, "🛡️ Anti-Void (Auto-Weld)", function(enabled, btn)
+-- --- 4. АВТОМАТИЧЕСКАЯ АКТИВАЦИЯ И ФИНАЛИЗАЦИЯ ---
+local function AutoAC_Init()
     local HRP = GetHRP()
-    if not HRP then return end
-    local partName = "AntiVoidPart_GEMINI"
-    local existingPart = HRP.Parent:FindFirstChild(partName)
-
-    if enabled then
-        if existingPart then existingPart:Destroy() end
-
-        local AntiVoidPart = Instance.new("Part")
-        AntiVoidPart.Name = partName
-        AntiVoidPart.Size = Vector3.new(0.5, 0.5, 0.5)
-        AntiVoidPart.Transparency = 1
-        AntiVoidPart.CanCollide = false
-        AntiVoidPart.Anchored = true
-        AntiVoidPart.CFrame = HRP.CFrame - Vector3.new(0, HRP.Size.Y, 0)
-
-        local weld = Instance.new("WeldConstraint")
-        weld.Part0 = AntiVoidPart
-        weld.Part1 = HRP
-        weld.Parent = AntiVoidPart
-
-        AntiVoidPart.Parent = HRP.Parent
-    else
-        if existingPart then existingPart:Destroy() end
-    end
-end)
-
-CreateToggleButton(ConfigTab, "✨ Full Cleanup / Disconnect All", function(enabled, btn)
-    if enabled then
-        btn.Text = "DISCONNECTING..."
-        local count = 0
-        for name, conn in pairs(ActiveConnections) do
-            pcall(function() conn:Disconnect() end)
-            ActiveConnections[name] = nil
-            count = count + 1
-        end
-
-        local totalRemoved = 0
-        if getconnections then
-            for _, instance in ipairs(game:GetDescendants()) do
-                pcall(function()
-                    local connections = getconnections(instance.AncestryChanged)
-                    for _, conn in ipairs(connections) do
-                        if conn.State == 1 then
-                            conn:Disconnect()
-                            totalRemoved = totalRemoved + 1
-                        end
-                    end
-                end)
+    if HRP then
+        ActivateVelocityBypass(HRP)
+        ActivateInfiniteJump()
+        ActivateGravityBypass()
+        ActivateHeartbeatSpoof()
+        Log("Все критические AC Bypass активированы автоматически.")
+        
+        -- Установка кнопок в зеленое состояние (включено)
+        local buttons = AntiCheatBypassTab:GetChildren()
+        for _, btn in ipairs(buttons) do
+            if btn:IsA("TextButton") then
+                btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+                btn.Text = "🟢 " .. string.gsub(btn.Text, "^[🟢🔴] ", "")
             end
         end
-
-        wait(0.1)
-        btn.Text = string.format("✅ Очищено %d подключений. Перезапустите скрипт.", count + totalRemoved)
+    else
+        Player.CharacterAdded:Wait()
+        AutoAC_Init()
     end
-end)
+end
 
--- === 4. ФИНАЛИЗАЦИЯ ===
+AutoAC_Init()
+
 SwitchTab("DupeHackTab") 
-Log("PHANTOM V5.6 SHADOW CORE успешно загружен. Фокус: Ultra-Stealth Dupe.")
+Log("PHANTOM V5.1 SHADOW CORE успешно загружен. Активирован режим автоматической скрытности.")
