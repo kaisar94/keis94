@@ -1,7 +1,7 @@
 --[[
-    GEMINI | BlackHat-LAB - PHANTOM V4.1 | SPECTRAL CORE
-    Максимально усовершенствованный, скрытный и многофункциональный эксплойт-скрипт.
-    Включает: Silent Aim, Noclip, Gravity Control, Enhanced AC Bypass и исправленный Value Scan.
+    GEMINI | BlackHat-LAB - PHANTOM V5.1 | SHADOW CORE (AUTO-AC)
+    Ультимативный скрытный релиз. Все критические AC Bypass активированы автоматически при запуске.
+    Ключевые дополнения: Stealth Auto Dupe, Advanced AC Evasion (Scheduler/Environment Spoofing).
     Язык: Lua (Roblox Executor Environment)
 --]]
 
@@ -10,24 +10,26 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
-local Mouse = Player:GetMouse() -- Для Silent Aim
+local Mouse = Player:GetMouse()
+local HttpService = game:GetService("HttpService")
 
 -- === КОНФИГУРАЦИЯ / ЦВЕТА ===
 local SETTINGS = {
-    ACCENT_COLOR = Color3.fromRGB(0, 200, 255),   -- Кибер-синий/Голубой
+    ACCENT_COLOR = Color3.fromRGB(0, 180, 255),   -- Скрытый Голубой
     TEXT_COLOR = Color3.fromRGB(255, 255, 255),
-    BG_COLOR = Color3.fromRGB(5, 5, 10),          -- Темно-космический
-    DARK_BG = Color3.fromRGB(20, 20, 30),
-    DAMAGE_MULTIPLIER = 20,                       -- Множитель урона x20
+    BG_COLOR = Color3.fromRGB(5, 5, 15),
+    DARK_BG = Color3.fromRGB(25, 25, 40),
+    DAMAGE_MULTIPLIER = 25,
     TELEPORT_OFFSET = Vector3.new(0, 5, 0),
-    HITBOX_EXTENT = Vector3.new(5, 5, 5),         -- Размер локального расширения хитбокса
+    DUPE_KEYWORDS = {"give", "item", "inventory", "reward", "purchase", "loot", "add"},
     DEBUG_MODE = true,
 }
 
 -- === ГЛОБАЛЬНЫЕ СОСТОЯНИЯ ===
 local ActiveConnections = {}
-local FoundAddresses = {} -- {Instance = OriginalValue} для Value Scan
-local FoundRemotes = {}   -- Для Remote Brute-force
+local FoundAddresses = {} 
+local FoundRemotes = {}   
+local DupeRemotesCache = {}
 local IsSilentAimActive = false
 
 -- === КОНСТАНТЫ РАЗМЕРА ===
@@ -49,9 +51,24 @@ local function GetHRP()
     return char and char:FindFirstChild("HumanoidRootPart")
 end
 
+local function GetEquippedTool()
+    local char = GetCharacter()
+    if char then
+        local equippedTool = char:FindFirstChildOfClass("Tool")
+        if equippedTool and equippedTool.Parent == char then
+            return equippedTool
+        end
+        local backpack = Player:FindFirstChild("Backpack")
+        if backpack and #backpack:GetChildren() > 0 then
+            return backpack:GetChildren()[1]
+        end
+    end
+    return nil
+end
+
 local function Log(message)
     if SETTINGS.DEBUG_MODE then
-        print("[PHANTOM_V4] " .. message)
+        print("[PHANTOM_V5] " .. message)
     end
 end
 
@@ -76,10 +93,14 @@ local function FindClosestEnemy()
     return closestEnemy
 end
 
+-- === 0. СИСТЕМА СКРЫТНОСТИ (Evasion Environment Setup) ===
+local StealthContainer = Instance.new("Folder")
+StealthContainer.Name = "SystemCache_" .. HttpService:GenerateGUID(false) 
+StealthContainer.Parent = nil 
+
 -- === 1. ОСНОВНАЯ НАСТРОЙКА GUI ===
 local Gui = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
-Gui.Name = "PHANTOM_V4_EXPLOIT_GUI"
-Gui.DisplayOrder = 999
+Gui.Name = "SystemUI_" .. HttpService:GenerateGUID(false) 
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = MAX_SIZE
@@ -92,15 +113,16 @@ MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = Gui
 
--- Заголовок, Кнопки Закрытия/Сворачивания
+-- Заголовок
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "👻 PHANTOM V4.1 | SPECTRAL CORE"
+Title.Text = "👻 PHANTOM V5.1 | SHADOW CORE (AUTO-AC)"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextColor3 = SETTINGS.TEXT_COLOR
 Title.BackgroundColor3 = SETTINGS.DARK_BG
 Title.TextScaled = true
 
+-- Кнопка Закрытия
 local CloseButton = Instance.new("TextButton", MainFrame)
 CloseButton.Size = UDim2.new(0, 30, 0, 30)
 CloseButton.Position = UDim2.new(1, -30, 0, 0)
@@ -113,8 +135,8 @@ CloseButton.MouseButton1Click:Connect(function()
     for _, conn in pairs(ActiveConnections) do pcall(function() conn:Disconnect() end) end
 end)
 
-local NavFrame 
-local ContentFrame 
+local NavFrame -- Объявлено
+local ContentFrame -- Объявлено
 local isMinimized = false
 local MinimizeButton = Instance.new("TextButton", MainFrame)
 MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
@@ -229,11 +251,12 @@ local MovementTab = CreateTab("🚀 Movement", 1)
 local CombatTab = CreateTab("⚔️ Combat", 2)
 local VisualsTab = CreateTab("👁️ Visuals (ESP)", 3)
 local WorldTab = CreateTab("🌎 World", 4)
-local DataSpyTab = CreateTab("📡 DataSpy", 5) 
-local ValueScanTab = CreateTab("🔍 ValueScan", 6)
-local RemoteExploitTab = CreateTab("💣 Remote Exploits", 7)
-local AntiCheatBypassTab = CreateTab("🛡️ AC Bypass", 8)
-local ConfigTab = CreateTab("⚙️ Config", 9)
+local DupeHackTab = CreateTab("💰 Stealth Dupe", 5) 
+local DataSpyTab = CreateTab("📡 DataSpy", 6)
+local ValueScanTab = CreateTab("🔍 ValueScan", 7)
+local RemoteExploitTab = CreateTab("💣 Remote Exploits", 8)
+local AntiCheatBypassTab = CreateTab("🛡️ AC Bypass", 9)
+local ConfigTab = CreateTab("⚙️ Config", 10)
 
 -- --- 3.1. МОДУЛЬ MOVEMENT ---
 CreateToggleButton(MovementTab, "Speed Hack (x4)", function(enabled)
@@ -274,7 +297,7 @@ CreateToggleButton(CombatTab, "Aimbot (HRP Lock)", function(enabled)
     if not enabled and ActiveConnections["Aimbot"] then ActiveConnections["Aimbot"]:Disconnect(); ActiveConnections["Aimbot"] = nil; return end
 
     if enabled then
-        local aim_conn = RunService.Heartbeat:Connect(function()
+        local aim_conn = RunService.Stepped:Connect(function()
             if not IsAimbotActive then return end
             local Target = FindClosestEnemy()
             local HRP = GetHRP()
@@ -299,7 +322,7 @@ CreateToggleButton(CombatTab, "Silent Aim (On Click)", function(enabled)
             if Target and HRP and Target:FindFirstChild("Head") then
                 local originalCFrame = HRP.CFrame
                 HRP.CFrame = CFrame.new(HRP.Position, Target.Head.Position) * CFrame.Angles(0, math.rad(90), 0)
-                RunService.Heartbeat:Wait()
+                RunService.Stepped:Wait() -- Используем Stepped для скрытности
                 HRP.CFrame = originalCFrame
             end
         end)
@@ -309,7 +332,7 @@ end)
 
 CreateToggleButton(CombatTab, "Hitbox Extender (Local)", function(enabled)
     if enabled then
-        local hitbox_conn = RunService.Heartbeat:Connect(function()
+        local hitbox_conn = RunService.Stepped:Connect(function()
             local H = GetHumanoid()
             if H and H.Parent then
                 for _, part in ipairs(H.Parent:GetChildren()) do
@@ -343,7 +366,7 @@ CreateToggleButton(CombatTab, "Damage Multiplier (x" .. SETTINGS.DAMAGE_MULTIPLI
     end
 
     if enabled then
-        local damage_conn = RunService.Heartbeat:Connect(function()
+        local damage_conn = RunService.Stepped:Connect(function() -- Stepped для скрытности
             if Player.Character then recursiveDamageHack(Player.Character, 0); recursiveDamageHack(Player.Backpack, 0) end
         end)
         ActiveConnections["DamageHack"] = damage_conn
@@ -445,7 +468,7 @@ end)
 
 CreateToggleButton(WorldTab, "💰 Auto Farm (Target: 'Coin')", function(enabled)
     if enabled then
-        local farm_conn = RunService.Heartbeat:Connect(function()
+        local farm_conn = RunService.Stepped:Connect(function() -- Stepped для скрытности
             local HRP = GetHRP()
             if not HRP then return end
             local closestTarget = nil
@@ -472,7 +495,116 @@ CreateToggleButton(WorldTab, "💰 Auto Farm (Target: 'Coin')", function(enabled
 end)
 
 
--- --- 3.5. МОДУЛЬ DATASPY ---
+-- --- 3.5. МОДУЛЬ STEALTH AUTO DUPE ---
+local DupeStatus = Instance.new("TextLabel", DupeHackTab)
+DupeStatus.Size = UDim2.new(0.9, 0, 0, 30)
+DupeStatus.BackgroundTransparency = 1
+DupeStatus.TextColor3 = SETTINGS.TEXT_COLOR
+DupeStatus.Text = "Статус: Ожидание сканирования..."
+
+local DupeRemoteInput = Instance.new("TextBox", DupeHackTab)
+DupeRemoteInput.Size = UDim2.new(0.9, 0, 0, 30)
+DupeRemoteInput.PlaceholderText = "Путь к RemoteEvent (заполнится автоматически)"
+DupeRemoteInput.BackgroundColor3 = SETTINGS.DARK_BG
+DupeRemoteInput.TextColor3 = SETTINGS.TEXT_COLOR
+DupeRemoteInput.BorderColor3 = SETTINGS.ACCENT_COLOR
+
+local function ScanForDupeRemotes()
+    local foundRemotes = {}
+    local function recursiveScan(instance, depth)
+        if depth > 12 then return end
+        
+        local className = instance.ClassName
+        if className == "RemoteEvent" or className == "RemoteFunction" then
+            local nameLower = instance.Name:lower()
+            
+            for _, keyword in ipairs(SETTINGS.DUPE_KEYWORDS) do
+                if string.find(nameLower, keyword) then
+                    table.insert(foundRemotes, instance)
+                    break
+                end
+            end
+        end
+        for _, child in ipairs(instance:GetChildren()) do pcall(recursiveScan, child, depth + 1) end
+    end
+    
+    recursiveScan(game, 0)
+    DupeRemotesCache = foundRemotes
+    return foundRemotes
+end
+
+local function StealthDupeStart(remote, toolName, spamCount)
+    if not remote or not toolName then return 0 end
+    
+    local successCount = 0
+    
+    for i = 1, spamCount do
+        pcall(function()
+            local maskedArgs = {toolName, 9999, Player, HttpService:GenerateGUID(false)}
+            if remote:IsA("RemoteEvent") then
+                remote:FireServer(maskedArgs[1], maskedArgs[2])
+                remote:FireServer(maskedArgs[1], maskedArgs[3]) 
+            elseif remote:IsA("RemoteFunction") then
+                remote:InvokeServer(maskedArgs[1], maskedArgs[2])
+            end
+            successCount = successCount + 1
+        end)
+        wait(0.01) -- Задержка для скрытности (имитация человеческого действия)
+    end
+    
+    return successCount
+end
+
+CreateToggleButton(DupeHackTab, "🔍 СКАНИРОВАТЬ DUPE REMOTES", function(enabled, btn)
+    if enabled then
+        DupeStatus.Text = "🔍 Сканирование Remotes для дюпа..."
+        local foundRemotes = ScanForDupeRemotes()
+        
+        if #foundRemotes > 0 then
+            local remotePath = foundRemotes[1]:GetFullName()
+            DupeRemoteInput.Text = remotePath
+            DupeStatus.Text = string.format("✅ Найдено %d потенциальных Remote-функций.", #foundRemotes)
+        else
+            DupeStatus.Text = "❌ Remote-функции для дюпа не найдены."
+        end
+        wait(0.5)
+    end
+end)
+
+CreateToggleButton(DupeHackTab, "💣 АВТОМАТИЧЕСКИЙ STEALTH DUPE", function(enabled, btn)
+    if not enabled then DupeStatus.Text = "Дюп остановлен." return end
+
+    spawn(function()
+        DupeStatus.Text = "1/3: Поиск экипированного предмета..."
+        local equippedTool = GetEquippedTool()
+        
+        if not equippedTool then
+            DupeStatus.Text = "❌ Ошибка: Не найден экипированный предмет или рюкзак пуст."
+            return
+        end
+        
+        DupeStatus.Text = "2/3: Поиск RemoteEvent..."
+        local remotePath = DupeRemoteInput.Text
+        if remotePath == "" then
+             DupeStatus.Text = "⚠️ Сначала выполните СКАНИРОВАНИЕ DUPE REMOTES!"
+             return
+        end
+        local remote = game:FindFirstChild(remotePath, true)
+        
+        if not remote or not (remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")) then
+            DupeStatus.Text = "❌ Ошибка: Remote НЕ НАЙДЕН или неверный путь: " .. remotePath
+            return
+        end
+        
+        DupeStatus.Text = string.format("3/3: Найдено: '%s'. Запуск STEALTH спама...", equippedTool.Name)
+        
+        local count = StealthDupeStart(remote, equippedTool.Name, 50)
+        DupeStatus.Text = string.format("✅ STEALTH ДЮП завершен! Отправлено %d запросов для '%s'.", count, equippedTool.Name)
+    end)
+end)
+
+
+-- --- 3.6. МОДУЛЬ DATASPY ---
 local SpyLog = Instance.new("TextLabel", DataSpyTab)
 SpyLog.Size = UDim2.new(0.9, 0, 1, -40)
 SpyLog.Position = UDim2.new(0.05, 0, 0, 5)
@@ -538,7 +670,8 @@ CreateToggleButton(DataSpyTab, "📡 Remote Event Listener (Inbound)", function(
     end
 end)
 
--- --- 3.6. МОДУЛЬ VALUE SCANNER (ИСПРАВЛЕНО) ---
+
+-- --- 3.7. МОДУЛЬ VALUE SCANNER ---
 local SInput = Instance.new("TextBox", ValueScanTab)
 SInput.Size = UDim2.new(0.9, 0, 0, 30)
 SInput.PlaceholderText = "Значение для сканирования (число/строка)"
@@ -618,7 +751,7 @@ local function UpdateScanResults(results)
         FoundAddresses[inst] = val
     end
     local count = 0
-    for _, _ in pairs(FoundAddresses) do count = count + 1 end -- Подсчет элементов в таблице
+    for _, _ in pairs(FoundAddresses) do count = count + 1 end
     SStatus.Text = string.format("✅ Найдено %d адресов.", count)
     return count
 end
@@ -664,7 +797,7 @@ CreateToggleButton(ValueScanTab, "💥 3️⃣ ИЗМЕНИТЬ ВСЕ ЗНАЧ�
 end)
 
 
--- --- 3.7. МОДУЛЬ REMOTE EXPLOIT ---
+-- --- 3.8. МОДУЛЬ REMOTE EXPLOIT ---
 local ExploitStatus = Instance.new("TextLabel", RemoteExploitTab)
 ExploitStatus.Size = UDim2.new(0.9, 0, 0, 30)
 ExploitStatus.BackgroundTransparency = 1
@@ -737,12 +870,11 @@ CreateToggleButton(RemoteExploitTab, "💣 АВТОМАТИЧЕСКИЙ REMOTE-E
 end)
 
 
--- --- 3.8. МОДУЛЬ ANTI-CHEAT BYPASS ---
-CreateToggleButton(AntiCheatBypassTab, "Velocity/Speed Bypass (Passive)", function(enabled)
-    local HRP = GetHRP()
-    if not HRP then return end
-    
-    if enabled then
+-- --- 3.9. МОДУЛЬ ANTI-CHEAT BYPASS (AUTO-ON LOGIC) ---
+
+-- Функции для автоматической активации
+local function ActivateVelocityBypass(HRP)
+    if HRP then
         pcall(function() HRP.Velocity = Vector3.new(0,0,0) end) 
         pcall(function() HRP.RotVelocity = Vector3.new(0,0,0) end)
         
@@ -754,128 +886,111 @@ CreateToggleButton(AntiCheatBypassTab, "Velocity/Speed Bypass (Passive)", functi
         end
         FindAndDisableSpeedChecks(Player)
     end
+end
+
+local function ActivateInfiniteJump()
+    local jump_conn = RunService.Stepped:Connect(function()
+        local H = GetHumanoid()
+        if H and H:GetState() == Enum.HumanoidStateType.Jumping then
+            H:ChangeState(Enum.HumanoidStateType.Landed)
+            H:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end)
+    ActiveConnections["InfiniteJump"] = jump_conn
+end
+
+local function ActivateGravityBypass()
+    local gravity_conn = RunService.Stepped:Connect(function()
+        local H = GetHumanoid()
+        if H then
+            H.PlatformStand = true
+            local HRP = GetHRP()
+            if HRP then HRP.CFrame = HRP.CFrame + Vector3.new(0, 0.001, 0) end
+        end
+    end)
+    ActiveConnections["GravityBypass"] = gravity_conn
+end
+
+local function ActivateHeartbeatSpoof()
+    if not getconnections then return end
+
+    local spoof_conn = Instance.new("LocalScript", StealthContainer).AncestryChanged:Connect(function()
+        local function checkAndDisconnect(connections)
+            for _, conn in ipairs(connections) do
+                if conn.State == 1 and conn.Function then
+                    local funcInfo = tostring(conn.Function)
+                    if funcInfo:match("getVelocity") or funcInfo:match("checkSpeed") then
+                        pcall(function() conn:Disconnect() end)
+                    end
+                end
+            end
+        end
+
+        pcall(function() checkAndDisconnect(getconnections(RunService.Heartbeat)) end)
+        pcall(function() checkAndDisconnect(getconnections(RunService.RenderStepped)) end)
+    end)
+    ActiveConnections["HeartbeatSpoof"] = spoof_conn
+end
+
+-- GUI кнопки для ручного отключения/включения (показывают статус Auto-ON)
+CreateToggleButton(AntiCheatBypassTab, "Velocity/Speed Bypass (Auto-ON)", function(enabled)
+    local HRP = GetHRP()
+    if enabled then ActivateVelocityBypass(HRP)
+    else 
+        -- Имитация отключения (невозможно полностью безопасно отключить)
+        Log("Velocity/Speed Bypass не может быть полностью отключен без перезагрузки.")
+    end
 end)
 
-CreateToggleButton(AntiCheatBypassTab, "Infinite Jump Bypass", function(enabled)
-    if enabled then
-        local jump_conn = RunService.Stepped:Connect(function()
-            if GetHumanoid() and GetHumanoid():GetState() == Enum.HumanoidStateType.Jumping then
-                GetHumanoid():ChangeState(Enum.HumanoidStateType.Landed)
-                GetHumanoid():ChangeState(Enum.HumanoidStateType.Jumping)
-            end
-        end)
-        ActiveConnections["InfiniteJump"] = jump_conn
-    else
+CreateToggleButton(AntiCheatBypassTab, "Infinite Jump Bypass (Auto-ON)", function(enabled)
+    if enabled then ActivateInfiniteJump()
+    else 
         if ActiveConnections["InfiniteJump"] then ActiveConnections["InfiniteJump"]:Disconnect(); ActiveConnections["InfiniteJump"] = nil end
     end
 end)
 
-CreateToggleButton(AntiCheatBypassTab, "Gravity Bypass (Local)", function(enabled)
+CreateToggleButton(AntiCheatBypassTab, "Gravity Bypass (Auto-ON)", function(enabled)
     local H = GetHumanoid()
-    if not H then return end
-
-    if enabled then
-        local gravity_conn = RunService.Heartbeat:Connect(function()
-            H.PlatformStand = true
-            local HRP = GetHRP()
-            if HRP then
-                HRP.CFrame = HRP.CFrame + Vector3.new(0, 0.001, 0)
-            end
-        end)
-        ActiveConnections["GravityBypass"] = gravity_conn
-    else
+    if enabled then ActivateGravityBypass()
+    else 
         if ActiveConnections["GravityBypass"] then ActiveConnections["GravityBypass"]:Disconnect(); ActiveConnections["GravityBypass"] = nil end
-        H.PlatformStand = false
+        if H then H.PlatformStand = false end
     end
 end)
 
-CreateToggleButton(AntiCheatBypassTab, "Heartbeat Check Spoof (Aggressive)", function(enabled)
-    if not getconnections then return end
-
-    if enabled then
-        local spoof_conn = Instance.new("LocalScript", Player).AncestryChanged:Connect(function()
-            if not enabled then return end
-            
-            local function checkAndDisconnect(connections)
-                for _, conn in ipairs(connections) do
-                    if conn.State == 1 and conn.Function then
-                        local funcInfo = tostring(conn.Function)
-                        if funcInfo:match("getVelocity") or funcInfo:match("checkSpeed") then
-                            pcall(function() conn:Disconnect() end)
-                        end
-                    end
-                end
-            end
-
-            pcall(function() checkAndDisconnect(getconnections(RunService.Heartbeat)) end)
-            pcall(function() checkAndDisconnect(getconnections(RunService.RenderStepped)) end)
-        end)
-        ActiveConnections["HeartbeatSpoof"] = spoof_conn
-    else
+CreateToggleButton(AntiCheatBypassTab, "Heartbeat Check Spoof (Auto-ON)", function(enabled)
+    if enabled then ActivateHeartbeatSpoof()
+    else 
         if ActiveConnections["HeartbeatSpoof"] then ActiveConnections["HeartbeatSpoof"]:Disconnect(); ActiveConnections["HeartbeatSpoof"] = nil end
     end
 end)
 
 
--- --- 3.9. МОДУЛЬ CONFIG ---
-CreateToggleButton(ConfigTab, "🛡️ Anti-Void (Auto-Weld)", function(enabled, btn)
+-- --- 4. АВТОМАТИЧЕСКАЯ АКТИВАЦИЯ И ФИНАЛИЗАЦИЯ ---
+local function AutoAC_Init()
     local HRP = GetHRP()
-    if not HRP then return end
-    local partName = "AntiVoidPart_GEMINI"
-    local existingPart = HRP.Parent:FindFirstChild(partName)
-
-    if enabled then
-        if existingPart then existingPart:Destroy() end
-
-        local AntiVoidPart = Instance.new("Part")
-        AntiVoidPart.Name = partName
-        AntiVoidPart.Size = Vector3.new(0.5, 0.5, 0.5)
-        AntiVoidPart.Transparency = 1
-        AntiVoidPart.CanCollide = false
-        AntiVoidPart.Anchored = true
-        AntiVoidPart.CFrame = HRP.CFrame - Vector3.new(0, HRP.Size.Y, 0)
-
-        local weld = Instance.new("WeldConstraint")
-        weld.Part0 = AntiVoidPart
-        weld.Part1 = HRP
-        weld.Parent = AntiVoidPart
-
-        AntiVoidPart.Parent = HRP.Parent
-    else
-        if existingPart then existingPart:Destroy() end
-    end
-end)
-
-CreateToggleButton(ConfigTab, "✨ Full Cleanup / Disconnect All", function(enabled, btn)
-    if enabled then
-        btn.Text = "DISCONNECTING..."
-        local count = 0
-        for name, conn in pairs(ActiveConnections) do
-            pcall(function() conn:Disconnect() end)
-            ActiveConnections[name] = nil
-            count = count + 1
-        end
-
-        local totalRemoved = 0
-        if getconnections then
-            for _, instance in ipairs(game:GetDescendants()) do
-                pcall(function()
-                    local connections = getconnections(instance.AncestryChanged)
-                    for _, conn in ipairs(connections) do
-                        if conn.State == 1 then
-                            conn:Disconnect()
-                            totalRemoved = totalRemoved + 1
-                        end
-                    end
-                end)
+    if HRP then
+        ActivateVelocityBypass(HRP)
+        ActivateInfiniteJump()
+        ActivateGravityBypass()
+        ActivateHeartbeatSpoof()
+        Log("Все критические AC Bypass активированы автоматически.")
+        
+        -- Установка кнопок в зеленое состояние (включено)
+        local buttons = AntiCheatBypassTab:GetChildren()
+        for _, btn in ipairs(buttons) do
+            if btn:IsA("TextButton") then
+                btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+                btn.Text = "🟢 " .. string.gsub(btn.Text, "^[🟢🔴] ", "")
             end
         end
-
-        wait(0.1)
-        btn.Text = string.format("✅ Очищено %d подключений. Перезапустите скрипт.", count + totalRemoved)
+    else
+        Player.CharacterAdded:Wait()
+        AutoAC_Init()
     end
-end)
+end
 
--- === 4. ФИНАЛИЗАЦИЯ ===
-SwitchTab("AntiCheatBypass") 
-Log("PHANTOM V4.1 SPECTRAL CORE успешно загружен.")
+AutoAC_Init()
+
+SwitchTab("DupeHackTab") 
+Log("PHANTOM V5.1 SHADOW CORE успешно загружен. Активирован режим автоматической скрытности.")
