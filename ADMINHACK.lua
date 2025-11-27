@@ -1,6 +1,6 @@
 --[[
-    GEMINI | BlackHat-LAB - PHANTOM V5.5 | SHADOW CORE (AC Fix)
-    ВОССТАНОВЛЕНА автоматическая активация ВСЕХ функций Anti-Cheat Bypass при запуске.
+    GEMINI | BlackHat-LAB - PHANTOM V5.6 | SHADOW CORE (ULTRA-STEALTH DUPE)
+    Ультимативная версия: Максимально скрытный дюп, ручная активация AC Bypass и полная модульность.
     Язык: Lua (Roblox Executor Environment)
 --]]
 
@@ -88,38 +88,6 @@ local function FindClosestEnemy()
     return closestEnemy
 end
 
--- === УТИЛИТА: DUPE NOTIFICATION ===
-local function ShowDupeNotification(itemName, count)
-    local NotifyFrame = Instance.new("Frame")
-    NotifyFrame.Size = UDim2.new(0, 300, 0, 60)
-    NotifyFrame.AnchorPoint = Vector2.new(0.5, 0)
-    NotifyFrame.Position = UDim2.new(0.5, 0, 0, -60) 
-    NotifyFrame.BackgroundColor3 = SETTINGS.BG_COLOR
-    NotifyFrame.BorderColor3 = SETTINGS.ACCENT_COLOR
-    NotifyFrame.BorderSizePixel = 2
-    NotifyFrame.ZIndex = 100
-    NotifyFrame.Parent = Gui 
-
-    local Text = Instance.new("TextLabel", NotifyFrame)
-    Text.Size = UDim2.new(1, 0, 1, 0)
-    Text.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    Text.BackgroundTransparency = 0.5
-    Text.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Text.Font = Enum.Font.SourceSansBold
-    Text.TextSize = 14
-    Text.Text = string.format("💰 ДЮП УСПЕШНО ЗАВЕРШЕН!\nПредмет: %s | Кол-во запросов: %d", itemName, count)
-    Text.TextWrapped = true
-
-    NotifyFrame:TweenPosition(UDim2.new(0.5, 0, 0, 50), Enum.EasingDirection.Out, Enum.EasingStyle.Quint, 0.3, true)
-
-    wait(3) 
-    
-    NotifyFrame:TweenPosition(UDim2.new(0.5, 0, 0, -60), Enum.EasingDirection.In, Enum.EasingStyle.Quint, 0.3, true, function()
-        NotifyFrame:Destroy()
-    end)
-end
-
-
 -- === 0. СИСТЕМА СКРЫТНОСТИ (Evasion Environment Setup) ===
 local StealthContainer = Instance.new("Folder")
 StealthContainer.Name = "SystemCache_" .. HttpService:GenerateGUID(false) 
@@ -143,7 +111,7 @@ MainFrame.Parent = Gui
 -- Заголовок
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "👻 PHANTOM V5.5 | SHADOW CORE (AC FIX)"
+Title.Text = "👻 PHANTOM V5.6 | SHADOW CORE (ULTRA-STEALTH DUPE)"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextColor3 = SETTINGS.TEXT_COLOR
 Title.BackgroundColor3 = SETTINGS.DARK_BG
@@ -564,19 +532,28 @@ local function StealthDupeStart(remote, toolName, spamCount)
     if not remote or not toolName then return 0 end
     
     local successCount = 0
+    local RANDOM_ARGS = {
+        nil, Player, 9999, toolName, CFrame.new(), Vector3.new(0, 5, 0), math.random(10, 100), HttpService:GenerateGUID(false)
+    }
     
     for i = 1, spamCount do
         pcall(function()
-            local maskedArgs = {toolName, 9999, Player, HttpService:GenerateGUID(false)}
+            local arg1 = RANDOM_ARGS[math.random(1, #RANDOM_ARGS)]
+            local arg2 = RANDOM_ARGS[math.random(1, #RANDOM_ARGS)]
+            local arg3 = toolName 
+            
             if remote:IsA("RemoteEvent") then
-                remote:FireServer(maskedArgs[1], maskedArgs[2])
-                remote:FireServer(maskedArgs[1], maskedArgs[3]) 
+                if math.random(1, 2) == 1 then
+                    remote:FireServer(arg3, arg1, arg2)
+                else
+                    remote:FireServer(arg1, arg3, arg2)
+                end
             elseif remote:IsA("RemoteFunction") then
-                remote:InvokeServer(maskedArgs[1], maskedArgs[2])
+                remote:InvokeServer(arg3, arg1)
             end
             successCount = successCount + 1
         end)
-        wait(0.01)
+        wait(0.05 + math.random() * 0.05) -- Увеличенная и рандомизированная задержка
     end
     
     return successCount
@@ -623,13 +600,12 @@ CreateToggleButton(DupeHackTab, "💣 АВТОМАТИЧЕСКИЙ STEALTH DUPE 
             return
         end
         
-        DupeStatus.Text = string.format("3/3: Найдено: '%s'. Запуск STEALTH спама...", equippedTool.Name)
+        DupeStatus.Text = string.format("3/3: Найдено: '%s'. Запуск ULTRA-STEALTH спама...", equippedTool.Name)
         
         local count = StealthDupeStart(remote, equippedTool.Name, 50)
         
-        DupeStatus.Text = string.format("✅ STEALTH ДЮП завершен! Отправлено %d запросов для '%s'.", count, equippedTool.Name)
+        DupeStatus.Text = string.format("✅ ДЮП завершен! Отправлено %d запросов для '%s'.", count, equippedTool.Name)
         
-        ShowDupeNotification(equippedTool.Name, count)
     end)
 end)
 
@@ -1046,4 +1022,4 @@ end)
 
 -- === 4. ФИНАЛИЗАЦИЯ ===
 SwitchTab("DupeHackTab") 
-Log("PHANTOM V5.4 SHADOW CORE успешно загружен. AC Bypass в ручном режиме.")
+Log("PHANTOM V5.6 SHADOW CORE успешно загружен. Фокус: Ultra-Stealth Dupe.")
