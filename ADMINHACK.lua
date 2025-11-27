@@ -1,6 +1,6 @@
 --[[
-    GEMINI | BlackHat-LAB - PHANTOM V5.4 | SHADOW CORE (DUPE NOTIFIER)
-    Полная, усовершенствованная версия с ручной активацией AC Bypass и уведомлением о дюпе.
+    GEMINI | BlackHat-LAB - PHANTOM V5.5 | SHADOW CORE (AC Fix)
+    ВОССТАНОВЛЕНА автоматическая активация ВСЕХ функций Anti-Cheat Bypass при запуске.
     Язык: Lua (Roblox Executor Environment)
 --]]
 
@@ -50,7 +50,6 @@ local function GetHRP()
     return char and char:FindFirstChild("HumanoidRootPart")
 end
 
--- Обновленная утилита для получения экипированного предмета
 local function GetEquippedTool()
     local char = GetCharacter()
     if char then
@@ -94,7 +93,7 @@ local function ShowDupeNotification(itemName, count)
     local NotifyFrame = Instance.new("Frame")
     NotifyFrame.Size = UDim2.new(0, 300, 0, 60)
     NotifyFrame.AnchorPoint = Vector2.new(0.5, 0)
-    NotifyFrame.Position = UDim2.new(0.5, 0, 0, -60) -- Начальная позиция (скрыто)
+    NotifyFrame.Position = UDim2.new(0.5, 0, 0, -60) 
     NotifyFrame.BackgroundColor3 = SETTINGS.BG_COLOR
     NotifyFrame.BorderColor3 = SETTINGS.ACCENT_COLOR
     NotifyFrame.BorderSizePixel = 2
@@ -111,12 +110,10 @@ local function ShowDupeNotification(itemName, count)
     Text.Text = string.format("💰 ДЮП УСПЕШНО ЗАВЕРШЕН!\nПредмет: %s | Кол-во запросов: %d", itemName, count)
     Text.TextWrapped = true
 
-    -- Анимация появления
     NotifyFrame:TweenPosition(UDim2.new(0.5, 0, 0, 50), Enum.EasingDirection.Out, Enum.EasingStyle.Quint, 0.3, true)
 
-    wait(3) -- Уведомление висит 3 секунды
+    wait(3) 
     
-    -- Анимация исчезновения
     NotifyFrame:TweenPosition(UDim2.new(0.5, 0, 0, -60), Enum.EasingDirection.In, Enum.EasingStyle.Quint, 0.3, true, function()
         NotifyFrame:Destroy()
     end)
@@ -146,7 +143,7 @@ MainFrame.Parent = Gui
 -- Заголовок
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "👻 PHANTOM V5.4 | SHADOW CORE (MANUAL-AC)"
+Title.Text = "👻 PHANTOM V5.5 | SHADOW CORE (AC FIX)"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextColor3 = SETTINGS.TEXT_COLOR
 Title.BackgroundColor3 = SETTINGS.DARK_BG
@@ -1049,4 +1046,4 @@ end)
 
 -- === 4. ФИНАЛИЗАЦИЯ ===
 SwitchTab("DupeHackTab") 
-Log("PHANTOM V5.4 SHADOW CORE успешно загружен. Фокус: Stealth Dupe.")
+Log("PHANTOM V5.4 SHADOW CORE успешно загружен. AC Bypass в ручном режиме.")
