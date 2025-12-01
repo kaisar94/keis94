@@ -4,7 +4,10 @@
     Модификации:
         1. Скрытность: Использование случайного имени для ScreenGui.
         2. Надежность: Улучшенная функция Instance-to-Path (i2p) с приоритетом GetService.
-        3. Функционал: Добавлена имитация Kernel-Level Decompiler.
+        3. Функционал: Имитация Kernel-Level Decompiler.
+        4. НОВАЯ ФУНКЦИОНАЛЬНОСТЬ: DynamicHook (SimpleSpy:DynamicHook) для изменения аргументов на лету.
+        5. НОВАЯ ФУНКЦИОНАЛЬНОСТЬ: Spam Attack (Кнопка Spam (10000x)).
+        6. НОВАЯ ФУНКЦИОНАЛЬНОСТЬ: Система SetGlobalEconomyHook для перехвата покупок/продаж.
 ]]
 
 -- shuts down the previous instance of SimpleSpy
@@ -69,11 +72,11 @@ local ToolTip = Instance.new("Frame")
 local TextLabel = Instance.new("TextLabel")
 local gui = Instance.new("ScreenGui",Background)
 local nextb = Instance.new("ImageButton", gui)
-local gui_corner = Instance.new("UICorner", nextb) -- Исправлено имя переменной
+local gui_corner = Instance.new("UICorner", nextb) 
 
 --Properties:
 
-SimpleSpy2.Name = GUI_NAME -- Используем случайное имя
+SimpleSpy2.Name = GUI_NAME 
 SimpleSpy2.ResetOnSpawn = false
 
 local SpyFind = CoreGui:FindFirstChild(SimpleSpy2.Name)
@@ -427,6 +430,19 @@ local keyToString = false
 -- determines whether return values are recorded
 local recordReturnValues = false
 
+-- ===============================================
+-- GAME BREAKER: СИГНАТУРЫ И ХУКИ
+-- ===============================================
+local RemoteHookMap = {} -- Глобальная карта для DynamicHook
+local EconomySignatures = {
+    "Purchase", "Buy", "Sell", "Trade", "Exchange", 
+    "Transact", "ProcessTransaction", "RequestPurchase",
+    "Gamble", "Bet", "UpgradeItem", "OpenLootbox",
+    "Deposit", "Withdraw", "GiveItem", "TakeItem"
+}
+local EconomicRemoteCache = {} 
+-- ===============================================
+
 -- functions
 
 --- Константы для ServiceMap (Улучшение i2p)
@@ -437,7 +453,6 @@ local ServiceMap = {
     Lighting = 'game:GetService("Lighting")',
     SoundService = 'game:GetService("SoundService")',
     StarterGui = 'game:GetService("StarterGui")',
-    -- Добавьте другие сервисы, которые вы хотите явно указывать
 }
 
 --- Реализация имитации декомпилятора (Улучшение функционала)
@@ -446,7 +461,6 @@ function decompile(scriptInstance)
         return "// ОШИБКА: Недействительный или ненайденный объект скрипта."
     end
     
-    -- Имитация вызова Kernel-level декомпилятора
     local name = scriptInstance.Name
     local class = scriptInstance.ClassName
     local path = scriptInstance:GetFullName()
@@ -457,9 +471,8 @@ function decompile(scriptInstance)
     )
     payload = payload .. "// Декомпиляция через LuauVM Bypasser (Имитация)\n\n"
     
-    -- Имитация декомпилированного кода
-    payload = payload .. string.format("local target = game:FindFirstChild(\"%s\")\n\n", path)
     if class == "LocalScript" then
+        payload = payload .. string.format("local target = game:FindFirstChild(\"%s\")\n\n", path)
         payload = payload .. "local function run_exploit(arg1)\n"
         payload = payload .. "    -- [[Здесь был бы сложный, деобфусцированный код клиента]]\n"
         payload = payload .. "    local remote = game:GetService(\"ReplicatedStorage\").MainRemote\n"
@@ -474,7 +487,106 @@ function decompile(scriptInstance)
     
     return payload
 end
------------------------------------------------------------------------------------
+
+--- Выполняет спам-атаку, многократно вызывая выбранный Remote с его аргументами.
+--- @param remoteInstance Instance (RemoteEvent/RemoteFunction)
+--- @param args table Аргументы для вызова.
+--- @param iterations number Количество повторений.
+function runSpamAttack(remoteInstance, args, iterations)
+    if not remoteInstance or (not remoteInstance:IsA("RemoteEvent") and not remoteInstance:IsA("RemoteFunction")) then
+        print("[GAME BREAKER] ОШИБКА: Не выбран действительный Remote для спам-атаки.")
+        return
+    end
+
+    print(string.format("[GAME BREAKER] Начинаю СПАМ-АТАКУ на %s... Повторений: %d", remoteInstance.Name, iterations))
+
+    task.spawn(function()
+        local fire
+        if remoteInstance:IsA("RemoteEvent") then
+            fire = function() remoteInstance:FireServer(unpack(args)) end
+        elseif remoteInstance:IsA("RemoteFunction") then
+            fire = function() pcall(remoteInstance.InvokeServer, remoteInstance, unpack(args)) end
+        end
+
+        local startTime = tick()
+        for i = 1, iterations do
+            if fire then
+                fire()
+            end
+            if i % 1000 == 0 then
+                task.wait() 
+            end
+        end
+
+        local endTime = tick()
+        print(string.format("[GAME BREAKER] СПАМ-АТАКА ЗАВЕРШЕНА. Время: %.2f сек. Remote: %s", endTime - startTime, remoteInstance.Name))
+    end)
+end
+
+--- Устанавливает функцию-перехватчик для динамической модификации аргументов Remote.
+--- Функция должна принимать (remote, args) и возвращать модифицированный 'args' (таблицу).
+--- @param remote Instance
+--- @param f function (remote, args) -> modified_args
+function SimpleSpy:DynamicHook(remote, f)
+    assert(typeof(remote) == "Instance", "Instance expected for remote.")
+    assert(typeof(f) == "function" or f == nil, "Function or nil expected for hook.")
+    
+    if f == nil then
+        RemoteHookMap[remote] = nil
+        print(string.format("[GAME BREAKER] DynamicHook удален для: %s", remote.Name))
+    else
+        RemoteHookMap[remote] = f
+        print(string.format("[GAME BREAKER] DynamicHook установлен для: %s", remote.Name))
+    end
+end
+
+--- Устанавливает хук для всех Remotes, которые соответствуют экономическим сигнатурам.
+--- @param f function (remote, args) -> modified_args
+function SimpleSpy:SetGlobalEconomyHook(f)
+    assert(typeof(f) == "function" or f == nil, "Function or nil expected.")
+    
+    local count = 0
+    local remotesToProcess = {}
+
+    for _, remote in pairs(game:GetDescendants()) do
+        if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+            table.insert(remotesToProcess, remote)
+        end
+    end
+    
+    for _, remote in pairs(remotesToProcess) do
+        local isEconomic = false
+        for _, signature in pairs(EconomySignatures) do
+            if remote.Name:match("(?i)" .. signature) then
+                isEconomic = true
+                break
+            end
+        end
+        
+        if isEconomic then
+            RemoteHookMap[remote] = f
+            EconomicRemoteCache[remote] = true 
+            count = count + 1
+        else
+            EconomicRemoteCache[remote] = false -- Убеждаемся, что неэкономические Remotes не удаляются в 'nil'
+        end
+    end
+    
+    if f == nil then
+        -- Если f == nil, удаляем все ранее установленные экономические хуки
+        local removedCount = 0
+        for remote, isEco in pairs(EconomicRemoteCache) do
+             if isEco and RemoteHookMap[remote] then
+                 RemoteHookMap[remote] = nil
+                 removedCount = removedCount + 1
+             end
+        end
+        print(string.format("[GAME BREAKER] Удален глобальный экономический хук. Удалено: %d", removedCount));
+    else
+        print(string.format("[GAME BREAKER] Установлен глобальный экономический хук на %d Remotes.", count));
+    end
+end
+
 
 --- Converts arguments to a string and generates code that calls the specified method with them, recommended to be used in conjunction with ValueToString (method must be a string, e.g. `game:GetService("ReplicatedStorage").Remote.remote:FireServer`)
 --- @param method string
@@ -890,7 +1002,7 @@ function toggleMaximize()
 		disable.Size = UDim2.new(1, 0, 1, 0)
 		disable.BackgroundColor3 = Color3.new()
 		disable.BorderSizePixel = 0
-		disable.Text = "" -- Исправлено: пустая строка, чтобы не было '0'
+		disable.Text = "" 
 		disable.ZIndex = 3
 		disable.BackgroundTransparency = 1
 		disable.AutoButtonColor = false
@@ -1178,6 +1290,9 @@ function newRemote(type, name, args, remote, function_info, blocked, src, return
 		Source = src,
 		GenScript = "-- Generating, please wait... (click to reload)\n-- (If this message persists, the remote args are likely extremely long)",
 		ReturnValue = returnValue,
+		-- === GAME BREAKER: СОХРАНЯЕМ ЧИСТЫЕ АРГУМЕНТЫ ДЛЯ СПАМА ===
+    	Args = args, 
+    	-- ==========================================================
 	}
 	logs[#logs + 1] = log
 	-- Улучшение производительности: используем task.spawn, если доступно
@@ -1524,7 +1639,7 @@ function i2p(i)
 	elseif parent ~= game then
 		while true do
 			if parent and parent.Parent == game then
-				local servicePath = ServiceMap[parent.ClassName] -- Проверяем ServiceMap
+				local servicePath = ServiceMap[parent.ClassName] 
 				if servicePath and parent == game:GetService(parent.ClassName) then
 					return servicePath .. out
 				end
@@ -1895,7 +2010,27 @@ function remoteHandler(hookfunction, methodName, remote, args, funcInfo, calling
 	local validInstance, validClass = pcall(function()
 		return remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")
 	end)
-	if validInstance and validClass then
+    
+    if validInstance and validClass then
+        -- === GAME BREAKER: АВТОМАТИЧЕСКАЯ ИДЕНТИФИКАЦИЯ ЭКОНОМИЧЕСКИХ ВЫЗОВОВ ===
+        local remoteName = remote.Name
+        local isEconomic = false
+        if not EconomicRemoteCache[remote] then
+            for _, signature in pairs(EconomySignatures) do
+                if remoteName:match("(?i)" .. signature) then 
+                    isEconomic = true
+                    break
+                end
+            end
+            if isEconomic then
+                EconomicRemoteCache[remote] = true
+                print(string.format("[GAME BREAKER: ЭКОНОМИКА] Идентифицирован Remote: %s.", remoteName))
+            else
+                EconomicRemoteCache[remote] = false
+            end
+        end
+        -- =========================================================================
+
 		local func = funcInfo.func
 		if not calling then
 			_, calling = pcall(getScriptFromSrc, funcInfo.source)
@@ -1969,7 +2104,20 @@ end
 --- Used for hookfunction
 function hookRemote(remoteType, remote, ...)
 	if typeof(remote) == "Instance" then
-		local args = { ... }
+		local args = { ... } -- Исходные аргументы
+        
+        -- === GAME BREAKER: ДИНАМИЧЕСКИЙ ПЕРЕХВАТ (HookFunction) ===
+        if RemoteHookMap[remote] then
+            local success, newArgs = pcall(RemoteHookMap[remote], remote, args)
+            if success and typeof(newArgs) == "table" then
+                args = newArgs -- Заменяем исходные аргументы
+                print(string.format("[GAME BREAKER] Модифицированы аргументы для %s (HookFunction)", remote.Name))
+            else
+                print(string.format("[GAME BREAKER: ОШИБКА] Хук для %s вернул неверный тип или произошла ошибка. Исходные аргументы сохранены. Ошибка: %s", remote.Name, tostring(newArgs)))
+            end
+        end
+        -- ==========================================================
+
 		local validInstance, remoteName = pcall(function()
 			return remote.Name
 		end)
@@ -1982,21 +2130,23 @@ function hookRemote(remoteType, remote, ...)
 			end
 			if recordReturnValues and remoteType == "RemoteFunction" then
 				local thread = coroutine.running()
-				local args = { ... }
+				local args_copy = {} -- Копируем args для использования в defer
+                for k, v in pairs(args) do args_copy[k] = v end
+
 				task.defer(function()
 					local returnValue
 					if remoteHooks[remote] then
-						args = { remoteHooks[remote](unpack(args)) }
-						returnValue = originalFunction(remote, unpack(args))
+						args_copy = { remoteHooks[remote](unpack(args_copy)) }
+						returnValue = originalFunction(remote, unpack(args_copy))
 					else
-						returnValue = originalFunction(remote, unpack(args))
+						returnValue = originalFunction(remote, unpack(args_copy))
 					end
 					schedule(
 						remoteHandler,
 						true,
 						remoteType == "RemoteEvent" and "fireserver" or "invokeserver",
 						remote,
-						args,
+						args, -- Передаем оригинальные (или модифицированные) аргументы для лога
 						funcInfo,
 						calling,
 						returnValue
@@ -2022,25 +2172,47 @@ function hookRemote(remoteType, remote, ...)
 				end
 			end
 		end
+	
+        -- Вызов оригинальной функции с модифицированными аргументами
+        if recordReturnValues and remoteType == "RemoteFunction" then
+            return coroutine.yield()
+        elseif remoteType == "RemoteEvent" then
+            if remoteHooks[remote] then
+                return originalEvent(remote, remoteHooks[remote](unpack(args)))
+            end
+            return originalEvent(remote, unpack(args))
+        else
+            if remoteHooks[remote] then
+                return originalFunction(remote, remoteHooks[remote](unpack(args)))
+            end
+            return originalFunction(remote, unpack(args))
+        end
 	end
-	if recordReturnValues and remoteType == "RemoteFunction" then
-		return coroutine.yield()
-	elseif remoteType == "RemoteEvent" then
-		if remoteHooks[remote] then
-			return originalEvent(remote, remoteHooks[remote](...))
-		end
-		return originalEvent(remote, ...)
-	else
-		if remoteHooks[remote] then
-			return originalFunction(remote, remoteHooks[remote](...))
-		end
-		return originalFunction(remote, ...)
-	end
+	
+    -- Fallback для не-Instance вызовов
+    if remoteType == "RemoteEvent" then
+        return originalEvent(remote, ...)
+    else
+        return originalFunction(remote, ...)
+    end
 end
 
 local newnamecall = newcclosure(function(remote, ...)
 	if typeof(remote) == "Instance" then
-		local args = { ... }
+		local args = { ... } -- Исходные аргументы
+        
+        -- === GAME BREAKER: ДИНАМИЧЕСКИЙ ПЕРЕХВАТ (NameCall) ===
+        if RemoteHookMap[remote] then
+            local success, newArgs = pcall(RemoteHookMap[remote], remote, args)
+            if success and typeof(newArgs) == "table" then
+                args = newArgs -- Заменяем исходные аргументы
+                print(string.format("[GAME BREAKER] Модифицированы аргументы для %s (NameCall)", remote.Name))
+            else
+                print(string.format("[GAME BREAKER: ОШИБКА] Хук для %s вернул неверный тип или произошла ошибка. Исходные аргументы сохранены. Ошибка: %s", remote.Name, tostring(newArgs)))
+            end
+        end
+        -- ==========================================================
+
 		local methodName = getnamecallmethod()
 		local validInstance, remoteName = pcall(function()
 			return remote.Name
@@ -2058,15 +2230,17 @@ local newnamecall = newcclosure(function(remote, ...)
 			end
 			if recordReturnValues and (methodName == "InvokeServer" or methodName == "invokeServer") then
 				local namecallThread = coroutine.running()
-				local args = { ... }
+				local args_copy = {}
+                for k, v in pairs(args) do args_copy[k] = v end
+
 				task.defer(function()
 					local returnValue
 					setnamecallmethod(methodName)
 					if remoteHooks[remote] then
-						args = { remoteHooks[remote](unpack(args)) }
-						returnValue = { original(remote, unpack(args)) }
+						args_copy = { remoteHooks[remote](unpack(args_copy)) }
+						returnValue = { original(remote, unpack(args_copy)) }
 					else
-						returnValue = { original(remote, unpack(args)) }
+						returnValue = { original(remote, unpack(args_copy)) }
 					end
 					coroutine.resume(namecallThread, unpack(returnValue))
 					coroutine.wrap(function()
@@ -2093,9 +2267,9 @@ local newnamecall = newcclosure(function(remote, ...)
 			and (methodName == "FireServer" or methodName == "fireServer" or methodName == "InvokeServer" or methodName == "invokeServer")
 			and remoteHooks[remote]
 		then
-			return original(remote, remoteHooks[remote](...))
+			return original(remote, remoteHooks[remote](unpack(args)))
 		else
-			return original(remote, ...)
+			return original(remote, unpack(args)) -- Вызов оригинальной функции с модифицированными аргументами
 		end
 	end
 	return original(remote, ...)
@@ -2294,27 +2468,7 @@ else
 end
 
 ----- ADD ONS ----- (easily add or remove additonal functionality to the RemoteSpy!)
---[[
-    Some helpful things:
-        - add your function in here, and create buttons for them through the 'newButton' function
-        - the first argument provided is the TextButton the player clicks to run the function
-        - generated scripts are generated when the namecall is initially fired and saved in remoteFrame objects
-        - blacklisted remotes will be ignored directly in namecall (less lag)
-        - the properties of a 'remoteFrame' object:
-            {
-                Name: (string) The name of the Remote
-                GenScript: (string) The generated script that appears in the codebox (generated when namecall fired)
-                Source: (Instance (LocalScript)) The script that fired/invoked the remote
-                Remote: (Instance (RemoteEvent) | Instance (RemoteFunction)) The remote that was fired/invoked
-                Log: (Instance (TextButton)) The button being used for the remote (same as 'selected.Log')
-            }
-        - globals list: (contact @exx#9394 for more information or if you have suggestions for more to be added)
-            - closed: (boolean) whether or not the GUI is currently minimized
-            - logs: (table[remoteFrame]) full of remoteFrame objects (properties listed above)
-            - selected: (remoteFrame) the currently selected remoteFrame (properties listed above)
-            - blacklist: (string[] | Instance[] (RemoteEvent) | Instance[] (RemoteFunction)) an array of blacklisted names and remotes
-            - codebox: (Instance (TextBox)) the textbox that holds all the code- cleared often
-]]
+
 -- Copies the contents of the codebox
 newButton("Copy Code", function()
 	return "Click to copy code"
@@ -2458,11 +2612,34 @@ end, function()
 			codebox:setRaw(decompile(selected.Source))
 			TextLabel.Text = "Done! KERNEL-DECOMPILE initiated."
 		else
-			codebox:setRaw(decompile(nil)) -- Вызываем с nil для сообщения об ошибке
+			codebox:setRaw(decompile(nil)) 
 			TextLabel.Text = "Source not found! Decompiler failed."
 		end
 	end
 end)
+
+-- Выполняет спам-атаку (10000 раз) с аргументами выбранного Remote.
+newButton("Spam (10000x)", function()
+	return "Клик для многократного вызова (10000 раз) выбранного Remote с его перехваченными аргументами. Используется для флуда и тестирования уязвимостей сервера."
+end, function()
+	if selected then
+		local remote = selected.Remote.remote
+        local args = selected.Args 
+
+        if not remote or not args then
+            TextLabel.Text = "ОШИБКА: Не удалось получить аргументы или Remote недействителен."
+            return
+        end
+
+        local finalArgs = args or {}
+		
+        TextLabel.Text = string.format("Запуск спам-атаки: %s (x10000)...", remote.Name)
+        runSpamAttack(remote, finalArgs, 10000)
+	else
+		TextLabel.Text = "Сначала выберите Remote из списка логов."
+	end
+end)
+
 
 newButton("Disable Info", function()
 	return string.format(
