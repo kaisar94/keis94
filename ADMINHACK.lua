@@ -1,14 +1,14 @@
 --[[
-    SimpleSpy v3.0 SOURCE - ФИНАЛЬНАЯ ВЕРСИЯ (GAME BREAKER ZERO)
+    SimpleSpy v2.2 SOURCE - ФИНАЛЬНЫЙ РЕФАКТОРИНГ (GAME BREAKER ZERO)
 
+    Фокус: Сохранение оригинального интерфейса и максимальная стабильность.
+    
     Особенности:
-        - KERNEL-UNBOUND Режим (Без цензуры).
-        - Скрытность: Случайное имя GUI + Synapse Protect.
-        - Интеллектуальная Фильтрация (Smart Filter) по умолчанию.
-        - DynamicHook: Перехват и модификация аргументов на лету.
-        - Economic Interception: Автоматический хук для покупок/продаж.
-        - Spam Attack (10000x): Флуд любого перехваченного Remote.
-        - Улучшенный UX: Упрощенный, чистый интерфейс с доступом к чит-функциям.
+        - Оригинальный интерфейс v2.2 сохранен.
+        - DynamicHook API (SimpleSpy:DynamicHook) интегрирован.
+        - Spam Attack (10000x) интегрирован.
+        - Экономическая/Приоритетная фильтрация интегрирована в логику.
+        - Улучшенная обработка потоков.
 ]]
 
 -- shuts down the previous instance of SimpleSpy
@@ -30,20 +30,9 @@ local Highlight =
 		game:HttpGet("https://github.com/exxtremestuffs/SimpleSpySource/raw/master/highlight.lua")
 	)()
 
----- Инициализация Скрытности ----
-local function generateRandomName()
-    local name = ""
-    for i = 1, 16 do 
-        local charCode = math.random(1, 3)
-        if charCode == 1 then name = name .. string.char(math.random(48, 57))
-        elseif charCode == 2 then name = name .. string.char(math.random(97, 122))
-        else name = name .. string.char(math.random(65, 90))
-        end
-    end
-    return name
-end
-local GUI_NAME = generateRandomName()
------------------------------------
+---- Инициализация Скрытности (Удален генератор случайных имен, чтобы сохранить UX) ----
+local GUI_NAME = "SimpleSpy2" 
+-------------------------------------------------------------------------------------
 
 -- Instances:
 local SimpleSpy2 = Instance.new("ScreenGui")
@@ -67,9 +56,9 @@ local TopBar = Instance.new("Frame")
 local Simple = Instance.new("TextButton")
 local CloseButton = Instance.new("TextButton")
 local ImageLabel = Instance.new("ImageLabel")
-local MaximizeButton = Instance.new("TextButton") -- Оставлены для структуры, но будут невидимы
+local MaximizeButton = Instance.new("TextButton") 
 local ImageLabel_2 = Instance.new("ImageLabel")
-local MinimizeButton = Instance.new("TextButton") -- Оставлены для структуры, но будут невидимы
+local MinimizeButton = Instance.new("TextButton") 
 local ImageLabel_3 = Instance.new("ImageLabel")
 local ToolTip = Instance.new("Frame")
 local TextLabel = Instance.new("TextLabel")
@@ -251,7 +240,7 @@ Simple.BackgroundTransparency = 1
 Simple.Position = UDim2.new(0, 5, 0, 0)
 Simple.Size = UDim2.new(0, 57, 0, 18)
 Simple.Font = Enum.Font.SourceSansBold
-Simple.Text = "SimpleSpy KERNEL-UNBOUND"
+Simple.Text = "SimpleSpy For Mobile"
 Simple.TextColor3 = Color3.new(0, 0, 1)
 Simple.TextSize = 14
 Simple.TextXAlignment = Enum.TextXAlignment.Left
@@ -284,7 +273,6 @@ MaximizeButton.Font = Enum.Font.SourceSans
 MaximizeButton.Text = ""
 MaximizeButton.TextColor3 = Color3.new(0, 0, 0)
 MaximizeButton.TextSize = 14
-MaximizeButton.Visible = false -- UX Fix: Скрываем
 
 ImageLabel_2.Parent = MaximizeButton
 ImageLabel_2.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -303,7 +291,6 @@ MinimizeButton.Font = Enum.Font.SourceSans
 MinimizeButton.Text = ""
 MinimizeButton.TextColor3 = Color3.new(0, 0, 0)
 MinimizeButton.TextSize = 14
-MinimizeButton.Visible = false -- UX Fix: Скрываем
 
 ImageLabel_3.Parent = MinimizeButton
 ImageLabel_3.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -337,7 +324,6 @@ TextLabel.TextYAlignment = Enum.TextYAlignment.Top
 
 -------------------------------------------------------------------------------
 -- init
-local Mouse
 local selectedColor = Color3.new(0.321569, 0.333333, 1)
 local deselectedColor = Color3.new(0.8, 0.8, 0.8)
 local layoutOrderNum = 999999999
@@ -408,8 +394,16 @@ local PrioritySignatures = {
     "Transact", "Gamble", "Bet", "UpgradeItem", "OpenLootbox",
     "Deposit", "Withdraw", "GiveItem", "TakeItem"
 }
+
+-- Только экономические (подмножество Priority)
+local EconomySignatures = {
+    "Purchase", "Buy", "Sell", "Trade", "Exchange", 
+    "Transact", "Gamble", "Bet", "UpgradeItem", "OpenLootbox",
+    "Deposit", "Withdraw", "GiveItem", "TakeItem"
+}
+
 local EconomicRemoteCache = {} 
-local smartFilterActive = true -- АКТИВНО ПО УМОЛЧАНИЮ (UX Fix)
+local smartFilterActive = true -- АКТИВНО ПО УМОЛЧАНИЮ (Smart Filter)
 _G.CurrentEconomyHook = nil
 -- ===============================================
 
@@ -473,7 +467,6 @@ function runSpamAttack(remoteInstance, args, iterations)
         if remoteInstance:IsA("RemoteEvent") then
             fire = function() remoteInstance:FireServer(unpack(args)) end
         elseif remoteInstance:IsA("RemoteFunction") then
-            -- Избегаем ожидания возврата для флуда
             fire = function() pcall(remoteInstance.InvokeServer, remoteInstance, unpack(args)) end
         end
 
@@ -522,8 +515,8 @@ function SimpleSpy:SetGlobalEconomyHook(f)
     
     for _, remote in pairs(remotesToProcess) do
         local isEconomic = false
-        for _, signature in pairs(PrioritySignatures) do -- Используем PrioritySignatures для проверки
-            if remote.Name:match("(?i)" .. signature) and table.find(EconomySignatures, signature) then
+        for _, signature in pairs(EconomySignatures) do 
+            if remote.Name:match("(?i)" .. signature) then
                 isEconomic = true
                 break
             end
@@ -571,8 +564,6 @@ function SimpleSpy:EditEconomyHook(newFunction)
         end
     end
 end
-
---- Converts arguments to a string and generates code that calls the specified method with them... (остальные функции API)
 
 function SimpleSpy:ArgsToString(method, args)
 	assert(typeof(method) == "string", "string expected, got " .. typeof(method))
@@ -657,7 +648,7 @@ function newSignal()
 			for _, f in pairs(connected) do coroutine.wrap(f)(...) end
 		end,
 	}
-end
+}
 
 function clean()
 	local max = _G.SIMPLESPYCONFIG_MaxRemotes
@@ -851,7 +842,7 @@ function fadeOut(elements)
 			end)()
 		end
 	end
-end
+}
 
 function toggleMinimize(override)
 	if mainClosing and not override or maximized then return end
@@ -1250,7 +1241,7 @@ function v2s(v, l, p, n, vtv, i, pt, path, tables, tI)
 	elseif typeof(v) == "userdata" then return "newproxy(true)"
 	elseif type(v) == "userdata" then return u2s(v)
 	elseif type(v) == "vector" then return string.format("Vector3.new(%s, %s, %s)", v2s(v.X), v2s(v.Y), v2s(v.Z))
-	else return "nil --[[" .. typeof(v) .. "]]" end
+	else return "nil --[[%s]]" .. typeof(v) end
 }
 
 function v2v(t)
@@ -1570,7 +1561,7 @@ function taskscheduler()
 		table.remove(scheduled, 1)
 		if type(currentf) == "table" and type(currentf[1]) == "function" then pcall(unpack(currentf)) end
 	end
-    task.wait() -- Добавляем yield для стабильности
+    task.wait() 
 end
 
 function remoteHandler(hookfunction, methodName, remote, args, funcInfo, calling, returnValue)
@@ -1633,7 +1624,12 @@ function remoteHandler(hookfunction, methodName, remote, args, funcInfo, calling
 		end)()
 		
 		if autoblock then
-            -- ... (логика автоблокировки)
+            if excluding[remote] then return end
+            if not history[remote] then history[remote] = { badOccurances = 0, lastCall = tick() } end
+            if tick() - history[remote].lastCall < 1 then history[remote].badOccurances += 1 return
+            else history[remote].badOccurances = 0 end
+            if history[remote].badOccurances > 3 then excluding[remote] = true return end
+            history[remote].lastCall = tick()
 		end
 		
 		local functionInfoStr
@@ -1663,7 +1659,6 @@ function hookRemote(remoteType, remote, ...)
             local success, newArgs = pcall(RemoteHookMap[remote], remote, args)
             if success and typeof(newArgs) == "table" then
                 args = newArgs
-                -- print(string.format("[GAME BREAKER] Модифицированы аргументы для %s (HookFunction)", remote.Name))
             else
                 print(string.format("[GAME BREAKER: ОШИБКА] Хук для %s вернул неверный тип или произошла ошибка. Ошибка: %s", remote.Name, tostring(newArgs)))
             end
@@ -1716,7 +1711,6 @@ local newnamecall = newcclosure(function(remote, ...)
             local success, newArgs = pcall(RemoteHookMap[remote], remote, args)
             if success and typeof(newArgs) == "table" then
                 args = newArgs
-                -- print(string.format("[GAME BREAKER] Модифицированы аргументы для %s (NameCall)", remote.Name))
             else
                 print(string.format("[GAME BREAKER: ОШИБКА] Хук для %s вернул неверный тип или произошла ошибка. Ошибка: %s", remote.Name, tostring(newArgs)))
             end
@@ -1842,11 +1836,16 @@ if not _G.SimpleSpyExecuted then
 			end
 		end
 		TextLabel:GetPropertyChangedSignal("Text"):Connect(scaleToolTip)
+		-- TopBar.InputBegan:Connect(onBarInput)
+		MinimizeButton.MouseButton1Click:Connect(toggleMinimize)
+		MaximizeButton.MouseButton1Click:Connect(toggleSideTray)
+		Simple.MouseButton1Click:Connect(onToggleButtonClick)
 		CloseButton.MouseEnter:Connect(onXButtonHover)
 		CloseButton.MouseLeave:Connect(onXButtonUnhover)
 		Simple.MouseEnter:Connect(onToggleButtonHover)
 		Simple.MouseLeave:Connect(onToggleButtonUnhover)
 		CloseButton.MouseButton1Click:Connect(shutdown)
+		table.insert(connections, UserInputService.InputBegan:Connect(onBarInput)) -- Фикс: использование onBarInput
 		table.insert(connections, UserInputService.InputBegan:Connect(backgroundUserInput))
 		connectResize()
 		SimpleSpy2.Enabled = true
@@ -1862,7 +1861,7 @@ if not _G.SimpleSpyExecuted then
 		table.insert(connections, Mouse.Move:Connect(mouseMoved))
         
         -- ==========================================================
-        -- GAME BREAKER: АВТОМАТИЧЕСКАЯ ИНТЕГРАЦИЯ ЭКОНОМИЧЕСКОГО ХУКА (UX)
+        -- GAME BREAKER: АВТОМАТИЧЕСКАЯ ИНТЕГРАЦИЯ ЭКОНОМИЧЕСКОГО ХУКА
         -- ==========================================================
         local DefaultEconomyHook = function(remote, args)
             -- Шаблон для атаки "Buy for Free":
@@ -1910,41 +1909,158 @@ else
 	return
 end
 
------ ADD ONS ----- (Кнопки для UX)
+----- ADD ONS ----- (Кнопки)
 
--- Утилиты
-newButton("Copy Code", function() return "Click to copy code" end, function()
+-- Copies the contents of the codebox
+newButton("Copy Code", function()
+	return "Click to copy code"
+end, function()
 	setclipboard(codebox:getString())
 	TextLabel.Text = "Copied successfully!"
 end)
 
-newButton("Run Code", function() return "Click to execute code" end, function()
-	TextLabel.Text = "Executing..."
-	local succeeded = pcall(function() return loadstring(codebox:getString())() end)
-	if succeeded then TextLabel.Text = "Executed successfully!"
-	else TextLabel.Text = "Execution error!" end
+--- Copies the source script (that fired the remote)
+newButton("Copy Remote", function()
+	return "Click to copy the path of the remote"
+end, function()
+	if selected then
+		setclipboard(v2s(selected.Remote.remote))
+		TextLabel.Text = "Copied!"
+	end
 end)
 
-newButton("Clr Logs", function() return "Click to clear logs" end, function()
+-- Executes the contents of the codebox through loadstring
+newButton("Run Code", function()
+	return "Click to execute code"
+end, function()
+	local orText = "Click to execute code"
+	TextLabel.Text = "Executing..."
+	local succeeded = pcall(function()
+		return loadstring(codebox:getString())()
+	end)
+	if succeeded then
+		TextLabel.Text = "Executed successfully!"
+	else
+		TextLabel.Text = "Execution error!"
+	end
+end)
+
+--- Gets the calling script (not super reliable but w/e)
+newButton("Get Script", function()
+	return "Click to copy calling script to clipboard\nWARNING: Not super reliable, nil == could not find"
+end, function()
+	if selected then
+		setclipboard(SimpleSpy:ValueToString(selected.Source))
+		TextLabel.Text = "Done!"
+	end
+end)
+
+--- Decompiles the script that fired the remote and puts it in the code box
+newButton("Function Info", function()
+	return "Click to view calling function information"
+end, function()
+	if selected then
+		if selected.Function then
+			codebox:setRaw(
+				"-- Calling function info\n-- Generated by the SimpleSpy serializer\n\n" .. tostring(selected.Function)
+			)
+		end
+		TextLabel.Text = "Done! Function info generated by the SimpleSpy Serializer."
+	end
+end)
+
+--- Clears the Remote logs
+newButton("Clr Logs", function()
+	return "Click to clear logs"
+end, function()
 	TextLabel.Text = "Clearing..."
 	logs = {}
-	for _, v in pairs(LogList:GetChildren()) do if not v:IsA("UIListLayout") then v:Destroy() end end
+	for _, v in pairs(LogList:GetChildren()) do
+		if not v:IsA("UIListLayout") then
+			v:Destroy()
+		end
+	end
 	codebox:setRaw("")
 	selected = nil
 	TextLabel.Text = "Logs cleared!"
 end)
 
-newButton("Toggle SmartFilter", function()
-	return string.format(
-		"[%s] Переключает Интеллектуальную Фильтрацию (Noise/Priority). Откл: показывает все Remotes.",
-		smartFilterActive and "ВКЛ" or "ВЫКЛ"
-	)
+--- Excludes the selected.Log Remote from the RemoteSpy
+newButton("Exclude (i)", function()
+	return "Click to exclude this Remote.\nExcluding a remote makes SimpleSpy ignore it, but it will continue to be usable."
 end, function()
-	smartFilterActive = not smartFilterActive
-	TextLabel.Text = string.format("Интеллектуальный Фильтр: %s", smartFilterActive and "ВКЛ" or "ВЫКЛ")
+	if selected then
+		blacklist[selected.Remote.remote] = true
+		TextLabel.Text = "Excluded!"
+	end
 end)
 
--- Основные ЧИТ-ФУНКЦИИ
+--- Excludes all Remotes that share the same name as the selected.Log remote from the RemoteSpy
+newButton("Exclude (n)", function()
+	return "Click to exclude all remotes with this name.\nExcluding a remote makes SimpleSpy ignore it, but it will continue to be usable."
+end, function()
+	if selected then
+		blacklist[selected.Name] = true
+		TextLabel.Text = "Excluded!"
+	end
+end)
+
+--- clears blacklist
+newButton("Clr Blacklist", function()
+	return "Click to clear the blacklist.\nExcluding a remote makes SimpleSpy ignore it, but it will continue to be usable."
+end, function()
+	blacklist = {}
+	TextLabel.Text = "Blacklist cleared!"
+end)
+
+--- Prevents the selected.Log Remote from firing the server (still logged)
+newButton("Block (i)", function()
+	return "Click to stop this remote from firing.\nBlocking a remote won't remove it from SimpleSpy logs, but it will not continue to fire the server."
+end, function()
+	if selected then
+		if selected.Remote.remote then
+			blocklist[selected.Remote.remote] = true
+			TextLabel.Text = "Excluded!"
+		else
+			TextLabel.Text = "Error! Instance may no longer exist, try using Block (n)."
+		end
+	end
+end)
+
+--- Prevents all remotes from firing that share the same name as the selected.Log remote from the RemoteSpy (still logged)
+newButton("Block (n)", function()
+	return "Click to stop remotes with this name from firing.\nBlocking a remote won't remove it from SimpleSpy logs, but it will not continue to fire the server."
+end, function()
+	if selected then
+		blocklist[selected.Name] = true
+		TextLabel.Text = "Excluded!"
+	end
+end)
+
+--- clears blacklist
+newButton("Clr Blocklist", function()
+	return "Click to stop blocking remotes.\nBlocking a remote won't remove it from SimpleSpy logs, but it will not continue to fire the server."
+end, function()
+	blocklist = {}
+	TextLabel.Text = "Blocklist cleared!"
+end)
+
+--- Attempts to decompile the source script (Использует имитацию Kernel Decompiler)
+newButton("Decompile", function()
+	return "Attempts to decompile source script using KERNEL-ACCESS.\nWARNING: Decompilation is based on the source script detected."
+end, function()
+	if selected then
+		if selected.Source then
+			codebox:setRaw(decompile(selected.Source))
+			TextLabel.Text = "Done! KERNEL-DECOMPILE initiated."
+		else
+			codebox:setRaw(decompile(nil)) 
+			TextLabel.Text = "Source not found! Decompiler failed."
+		end
+	end
+end)
+
+-- Выполняет спам-атаку (10000 раз) с аргументами выбранного Remote.
 newButton("Spam (10000x)", function()
 	return "Клик для многократного вызова (10000 раз) выбранного Remote с его перехваченными аргументами. Используется для флуда и тестирования уязвимостей сервера."
 end, function()
@@ -1966,80 +2082,6 @@ end, function()
 	end
 end)
 
-newButton("Block (i)", function()
-	return "Клик для остановки firing/invoking этого Remote по экземпляру."
-end, function()
-	if selected then
-		if selected.Remote.remote then
-			blocklist[selected.Remote.remote] = true
-			TextLabel.Text = "Блокировано!"
-		else
-			TextLabel.Text = "Ошибка! Instance не существует."
-		end
-	end
-end)
-
-newButton("Decompile", function()
-	return "Attempts to decompile source script using KERNEL-ACCESS."
-end, function()
-	if selected then
-		if selected.Source then
-			codebox:setRaw(decompile(selected.Source))
-			TextLabel.Text = "Done! KERNEL-DECOMPILE initiated."
-		else
-			codebox:setRaw(decompile(nil)) 
-			TextLabel.Text = "Source not found! Decompiler failed."
-		end
-	end
-end)
-
--- Вспомогательные функции (оставшиеся)
-newButton("Copy Remote", function()
-	return "Click to copy the path of the remote"
-end, function()
-	if selected then
-		setclipboard(v2s(selected.Remote.remote))
-		TextLabel.Text = "Copied!"
-	end
-end)
-
-newButton("Block (n)", function()
-	return "Клик для остановки firing/invoking всех Remotes с этим именем."
-end, function()
-	if selected then
-		blocklist[selected.Name] = true
-		TextLabel.Text = "Блокировано по имени!"
-	end
-end)
-
-newButton("Clr Blocklist", function()
-	return "Click to stop blocking remotes."
-end, function()
-	blocklist = {}
-	TextLabel.Text = "Blocklist cleared!"
-end)
-
-newButton("Get Script", function()
-	return "Click to copy calling script to clipboard\nWARNING: Not super reliable, nil == could not find"
-end, function()
-	if selected then
-		setclipboard(SimpleSpy:ValueToString(selected.Source))
-		TextLabel.Text = "Done!"
-	end
-end)
-
-newButton("Function Info", function()
-	return "Click to view calling function information"
-end, function()
-	if selected then
-		if selected.Function then
-			codebox:setRaw(
-				"-- Calling function info\n-- Generated by the SimpleSpy serializer\n\n" .. tostring(selected.Function)
-			)
-		end
-		TextLabel.Text = "Done! Function info generated by the SimpleSpy Serializer."
-	end
-end)
 
 newButton("Disable Info", function()
 	return string.format(
@@ -2051,6 +2093,47 @@ end, function()
 	TextLabel.Text = string.format(
 		"[%s] Toggle function info (because it can cause lag in some games)",
 		funcEnabled and "ENABLED" or "DISABLED"
+	)
+end)
+
+newButton("Autoblock", function()
+	return string.format(
+		"[%s] [BETA] Intelligently detects and excludes spammy remote calls from logs",
+		autoblock and "ENABLED" or "DISABLED"
+	)
+end, function()
+	autoblock = not autoblock
+	TextLabel.Text = string.format(
+		"[%s] [BETA] Intelligently detects and excludes spammy remote calls from logs",
+		autoblock and "ENABLED" or "DISABLED"
+	)
+	history = {}
+	excluding = {}
+end)
+
+newButton("CallingScript", function()
+	return string.format(
+		"[%s] [UNSAFE] Uses 'getcallingscript' to get calling script for Decompile and GetScript. Much more reliable, but opens up SimpleSpy to detection and/or instability.",
+		useGetCallingScript and "ENABLED" or "DISABLED"
+	)
+end, function()
+	useGetCallingScript = not useGetCallingScript
+	TextLabel.Text = string.format(
+		"[%s] [UNSAFE] Uses 'getcallingscript' to get calling script for Decompile and GetScript. Much more reliable, but opens up SimpleSpy to detection and/or instability.",
+		useGetCallingScript and "ENABLED" or "DISABLED"
+	)
+end)
+
+newButton("KeyToString", function()
+	return string.format(
+		"[%s] [BETA] Uses an experimental new function to replicate Roblox's behavior when a non-primitive type is used as a key in a table. Still in development and may not properly reflect tostringed (empty) userdata.",
+		keyToString and "ENABLED" or "DISABLED"
+	)
+end, function()
+	keyToString = not keyToString
+	TextLabel.Text = string.format(
+		"[%s] [BETA] Uses an experimental new function to replicate Roblox's behavior when a non-primitive type is used as a key in a table. Still in development and may not properly reflect tostringed (empty) userdata.",
+		keyToString and "ENABLED" or "DISABLED"
 	)
 end)
 
