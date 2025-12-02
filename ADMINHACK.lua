@@ -1,17 +1,17 @@
 --[[
-    SimpleSpy v2.2 SOURCE
+    SimpleSpy v2.2 SOURCE
 
-    SimpleSpy is a lightweight penetration testing tool that logs remote calls.
+    SimpleSpy is a lightweight penetration testing tool that logs remote calls.
 
-    Credits:
-        exx - basically everything
-        Frosty - GUI to Lua
+    Credits:
+        exx - basically everything
+        Frosty - GUI to Lua
 ]]
 
 --[[
 
-  Modification Made By - REDz
-  
+  Modification Made By - REDz
+  
 ]]
 
 -- shuts down the previous instance of SimpleSpy
@@ -69,7 +69,7 @@ SimpleSpy2.ResetOnSpawn = false
 local SpyFind = CoreGui:FindFirstChild(SimpleSpy2.Name)
 
 if SpyFind and SpyFind ~= SimpleSpy2 then
-  SpyFind:Destroy()
+  SpyFind:Destroy()
 end
 
 Background.Name = "Background"
@@ -708,7 +708,7 @@ function onBarInput(input)
 				):Play()
 			end
 			-- if input.UserInputState ~= Enum.UserInputState.Begin then
-			--     RunService.UnbindFromRenderStep(RunService, "drag")
+			--     RunService.UnbindFromRenderStep(RunService, "drag")
 			-- end
 		end)
 		table.insert(
@@ -1168,13 +1168,13 @@ function genScript(remote, args)
 				not pcall(function()
 					for i, v in pairs(args) do
 						if type(i) ~= "Instance" and type(i) ~= "userdata" then
-							gen = gen .. "\n    [object] = "
+							gen = gen .. "\n    [object] = "
 						elseif type(i) == "string" then
-							gen = gen .. '\n    ["' .. i .. '"] = '
+							gen = gen .. '\n    ["' .. i .. '"] = '
 						elseif type(i) == "userdata" and typeof(i) ~= "Instance" then
-							gen = gen .. "\n    [" .. string.format("nil --[[%s]]", typeof(v)) .. ")] = "
+							gen = gen .. "\n    [" .. string.format("nil --[[%s]]", typeof(v)) .. ")] = "
 						elseif type(i) == "userdata" then
-							gen = gen .. "\n    [game." .. i:GetFullName() .. ")] = "
+							gen = gen .. "\n    [game." .. i:GetFullName() .. ")] = "
 						end
 						if type(v) ~= "Instance" and type(v) ~= "userdata" then
 							gen = gen .. "object"
@@ -2228,25 +2228,25 @@ end
 
 ----- ADD ONS ----- (easily add or remove additonal functionality to the RemoteSpy!)
 --[[
-    Some helpful things:
-        - add your function in here, and create buttons for them through the 'newButton' function
-        - the first argument provided is the TextButton the player clicks to run the function
-        - generated scripts are generated when the namecall is initially fired and saved in remoteFrame objects
-        - blacklisted remotes will be ignored directly in namecall (less lag)
-        - the properties of a 'remoteFrame' object:
-            {
-                Name: (string) The name of the Remote
-                GenScript: (string) The generated script that appears in the codebox (generated when namecall fired)
-                Source: (Instance (LocalScript)) The script that fired/invoked the remote
-                Remote: (Instance (RemoteEvent) | Instance (RemoteFunction)) The remote that was fired/invoked
-                Log: (Instance (TextButton)) The button being used for the remote (same as 'selected.Log')
-            }
-        - globals list: (contact @exx#9394 for more information or if you have suggestions for more to be added)
-            - closed: (boolean) whether or not the GUI is currently minimized
-            - logs: (table[remoteFrame]) full of remoteFrame objects (properties listed above)
-            - selected: (remoteFrame) the currently selected remoteFrame (properties listed above)
-            - blacklist: (string[] | Instance[] (RemoteEvent) | Instance[] (RemoteFunction)) an array of blacklisted names and remotes
-            - codebox: (Instance (TextBox)) the textbox that holds all the code- cleared often
+    Some helpful things:
+        - add your function in here, and create buttons for them through the 'newButton' function
+        - the first argument provided is the TextButton the player clicks to run the function
+        - generated scripts are generated when the namecall is initially fired and saved in remoteFrame objects
+        - blacklisted remotes will be ignored directly in namecall (less lag)
+        - the properties of a 'remoteFrame' object:
+            {
+                Name: (string) The name of the Remote
+                GenScript: (string) The generated script that appears in the codebox (generated when namecall fired)
+                Source: (Instance (LocalScript)) The script that fired/invoked the remote
+                Remote: (Instance (RemoteEvent) | Instance (RemoteFunction)) The remote that was fired/invoked
+                Log: (Instance (TextButton)) The button being used for the remote (same as 'selected.Log')
+            }
+        - globals list: (contact @exx#9394 for more information or if you have suggestions for more to be added)
+            - closed: (boolean) whether or not the GUI is currently minimized
+            - logs: (table[remoteFrame]) full of remoteFrame objects (properties listed above)
+            - selected: (remoteFrame) the currently selected remoteFrame (properties listed above)
+            - blacklist: (string[] | Instance[] (RemoteEvent) | Instance[] (RemoteFunction)) an array of blacklisted names and remotes
+            - codebox: (Instance (TextBox)) the textbox that holds all the code- cleared often
 ]]
 -- Copies the contents of the codebox
 newButton("Copy Code", function()
@@ -2469,4 +2469,40 @@ end, function()
 	if selected then
 		codebox:setRaw(SimpleSpy:ValueToVar(selected.ReturnValue, "returnValue"))
 	end
+end)
+
+--- My New Additions for LO!
+newButton("List Remotes", function()
+	return "Click to print all remote names currently in logs to the console."
+end, function()
+	TextLabel.Text = "Printing remote names..."
+	local remoteNames = {}
+	for _, log in pairs(logs) do
+		if log.Name and not table.find(remoteNames, log.Name) then
+			table.insert(remoteNames, log.Name)
+		end
+	end
+	print("--- SimpleSpy Logged Remote Names (" .. #remoteNames .. ") ---")
+	for i, name in pairs(remoteNames) do
+		print(string.format("[%d] %s", i, name))
+	end
+	print("-----------------------------------")
+	TextLabel.Text = "Remote names printed to console!"
+end)
+
+newButton("Clr AutoBlock", function()
+	return string.format(
+		"[%s] Click to clear the autoblock history and exclusions so all remotes can be checked again.",
+		autoblock and "ENABLED" or "DISABLED"
+	)
+end, function()
+	history = {}
+	excluding = {}
+	TextLabel.Text = "Autoblock history cleared!"
+end)
+
+newButton("Log Count", function()
+	return "Click to check the total number of remote calls currently logged in SimpleSpy."
+end, function()
+	TextLabel.Text = "Total logs: " .. #logs
 end)
