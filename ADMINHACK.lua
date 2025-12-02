@@ -1,9 +1,18 @@
 --[[
-    SimpleSpy v2.2.1-OMEGA SOURCE (In-Situ Code Editor & Advanced Player Tracking)
-    Mod by OMEGA HACKER
+ 
+    SimpleSpy v2.3 SOURCE - MODIFIED BY GEMINI 3.0 LABS
+
+    SimpleSpy is a lightweight penetration testing tool that logs remote calls.
+
+    Credits:
+        exx - basically everything
+        Frosty - GUI to Lua
+        REDz - Modification Made By - REDz
+        GEMINI 3.0 LABS - Code Editing/Execution & Input Logging
+
 ]]
 
--- Original SimpleSpy Code Block Start (with minor adjustments for integration)
+-- shuts down the previous instance of SimpleSpy
 if _G.SimpleSpyExecuted and type(_G.SimpleSpyShutdown) == "function" then
 	print(pcall(_G.SimpleSpyShutdown))
 end
@@ -46,7 +55,7 @@ local MinimizeButton = Instance.new("TextButton")
 local ImageLabel_3 = Instance.new("ImageLabel")
 local ToolTip = Instance.new("Frame")
 local TextLabel = Instance.new("TextLabel")
-local gui = Instance.new("ScreenGui",Background)
+local gui = Instance.new("ScreenGui", Background)
 local nextb = Instance.new("ImageButton", gui)
 local gui = Instance.new("UICorner", nextb)
 
@@ -58,7 +67,7 @@ SimpleSpy2.ResetOnSpawn = false
 local SpyFind = CoreGui:FindFirstChild(SimpleSpy2.Name)
 
 if SpyFind and SpyFind ~= SimpleSpy2 then
-  SpyFind:Destroy()
+	SpyFind:Destroy()
 end
 
 Background.Name = "Background"
@@ -70,15 +79,15 @@ Background.Size = UDim2.new(0, 450, 0, 268)
 Background.Active = true
 Background.Draggable = true
 
-nextb.Position = UDim2.new(0,100,0,60)
-nextb.Size = UDim2.new(0,40,0,40)
+nextb.Position = UDim2.new(0, 100, 0, 60)
+nextb.Size = UDim2.new(0, 40, 0, 40)
 nextb.BackgroundColor3 = Color3.fromRGB(53, 52, 55)
 nextb.Image = "rbxassetid://7072720870"
 nextb.Active = true
 nextb.Draggable = true
 nextb.MouseButton1Down:connect(function()
-nextb.Image = (Background.Visible and "rbxassetid://7072720870") or "rbxassetid://7072719338"
-Background.Visible = not Background.Visible
+	nextb.Image = (Background.Visible and "rbxassetid://7072720870") or "rbxassetid://7072719338"
+	Background.Visible = not Background.Visible
 end)
 
 LeftPanel.Name = "LeftPanel"
@@ -375,6 +384,8 @@ local rightFadeIn
 local codebox
 local p
 local getnilrequired = false
+--- Whether or not CodeBox is currently in Edit mode
+local isCodeEditable = false 
 
 -- autoblock variables
 local autoblock = false
@@ -406,24 +417,32 @@ local keyToString = false
 -- determines whether return values are recorded
 local recordReturnValues = false
 
--- OMEGA HACKER ADDITIONS
-local codeboxEditable = false
-local playerActions = {} -- Log for player actions
+-- player input logging
+local isInputSpying = false
 
 -- functions
 
--- ... (SimpleSpy:ArgsToString to getplayerFromInstance functions - Unchanged for brevity)
+--- Converts arguments to a string and generates code that calls the specified method with them, recommended to be used in conjunction with ValueToString (method must be a string, e.g. `game:GetService("ReplicatedStorage").Remote.remote:FireServer`)
+--- @param method string
+--- @param args any[]
+--- @return string
 function SimpleSpy:ArgsToString(method, args)
 	assert(typeof(method) == "string", "string expected, got " .. typeof(method))
 	assert(typeof(args) == "table", "table expected, got " .. typeof(args))
 	return v2v({ args = args }) .. "\n\n" .. method .. "(unpack(args))"
 end
 
+--- Converts a value to variables with the specified index as the variable name (if nil/invalid then the name will be assigned automatically)
+--- @param t any[]
+--- @return string
 function SimpleSpy:TableToVars(t)
 	assert(typeof(t) == "table", "table expected, got " .. typeof(t))
 	return v2v(t)
 end
 
+--- Converts a value to a variable with the specified `variablename` (if nil/invalid then the name will be assigned automatically)
+--- @param value any
+--- @return string
 function SimpleSpy:ValueToVar(value, variablename)
 	assert(variablename == nil or typeof(variablename) == "string", "string expected, got " .. typeof(variablename))
 	if not variablename then
@@ -432,10 +451,16 @@ function SimpleSpy:ValueToVar(value, variablename)
 	return v2v({ [variablename] = value })
 end
 
+--- Converts any value to a string, cannot preserve function contents
+--- @param value any
+--- @return string
 function SimpleSpy:ValueToString(value)
 	return v2s(value)
 end
 
+--- Generates the simplespy function info
+--- @param func function
+--- @return string
 function SimpleSpy:GetFunctionInfo(func)
 	assert(typeof(func) == "function", "Instance expected, got " .. typeof(func))
 	warn("Function info currently unavailable due to crashing in Synapse X")
@@ -445,6 +470,8 @@ function SimpleSpy:GetFunctionInfo(func)
 	} })
 end
 
+--- Gets the ScriptSignal for a specified remote being fired
+--- @param remote Instance
 function SimpleSpy:GetRemoteFiredSignal(remote)
 	assert(typeof(remote) == "Instance", "Instance expected, got " .. typeof(remote))
 	if not remoteSignals[remote] then
@@ -453,12 +480,17 @@ function SimpleSpy:GetRemoteFiredSignal(remote)
 	return remoteSignals[remote]
 end
 
+--- Allows for direct hooking of remotes **THIS CAN BE VERY DANGEROUS**
+--- @param remote Instance
+--- @param f function
 function SimpleSpy:HookRemote(remote, f)
 	assert(typeof(remote) == "Instance", "Instance expected, got " .. typeof(remote))
 	assert(typeof(f) == "function", "function expected, got " .. typeof(f))
 	remoteHooks[remote] = f
 end
 
+--- Blocks the specified remote instance/string
+--- @param remote any
 function SimpleSpy:BlockRemote(remote)
 	assert(
 		typeof(remote) == "Instance" or typeof(remote) == "string",
@@ -467,6 +499,8 @@ function SimpleSpy:BlockRemote(remote)
 	blocklist[remote] = true
 end
 
+--- Excludes the specified remote from logs (instance/string)
+--- @param remote any
 function SimpleSpy:ExcludeRemote(remote)
 	assert(
 		typeof(remote) == "Instance" or typeof(remote) == "string",
@@ -475,6 +509,8 @@ function SimpleSpy:ExcludeRemote(remote)
 	blacklist[remote] = true
 end
 
+--- Creates a new ScriptSignal that can be connected to and fired
+--- @return table
 function newSignal()
 	local connected = {}
 	return {
@@ -511,6 +547,7 @@ function newSignal()
 	}
 end
 
+--- Prevents remote spam from causing lag (clears logs after `_G.SIMPLESPYCONFIG_MaxRemotes` or 500 remotes)
 function clean()
 	local max = _G.SIMPLESPYCONFIG_MaxRemotes
 	if not typeof(max) == "number" and math.floor(max) ~= max then
@@ -534,6 +571,7 @@ function clean()
 	end
 end
 
+--- Scales the ToolTip to fit containing text
 function scaleToolTip()
 	local size = TextService:GetTextSize(
 		TextLabel.Text,
@@ -545,6 +583,7 @@ function scaleToolTip()
 	ToolTip.Size = UDim2.new(0, size.X + 4, 0, size.Y + 4)
 end
 
+--- Executed when the toggle button (the SimpleSpy logo) is hovered over
 function onToggleButtonHover()
 	if not toggle then
 		TweenService:Create(Simple, TweenInfo.new(0.5), { TextColor3 = Color3.fromRGB(252, 51, 51) }):Play()
@@ -553,18 +592,22 @@ function onToggleButtonHover()
 	end
 end
 
+--- Executed when the toggle button is unhovered over
 function onToggleButtonUnhover()
 	TweenService:Create(Simple, TweenInfo.new(0.5), { TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
 end
 
+--- Executed when the X button is hovered over
 function onXButtonHover()
 	TweenService:Create(CloseButton, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(255, 60, 60) }):Play()
 end
 
+--- Executed when the X button is unhovered over
 function onXButtonUnhover()
 	TweenService:Create(CloseButton, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(37, 36, 38) }):Play()
 end
 
+--- Toggles the remote spy method (when button clicked)
 function onToggleButtonClick()
 	if toggle then
 		TweenService:Create(Simple, TweenInfo.new(0.5), { TextColor3 = Color3.fromRGB(252, 51, 51) }):Play()
@@ -574,6 +617,7 @@ function onToggleButtonClick()
 	toggleSpyMethod()
 end
 
+--- Reconnects bringBackOnResize if the current viewport changes and also connects it initially
 function connectResize()
 	local lastCam = workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(bringBackOnResize)
 	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
@@ -584,6 +628,7 @@ function connectResize()
 	end)
 end
 
+--- Brings gui back if it gets lost offscreen (connected to the camera viewport changing)
 function bringBackOnResize()
 	validateSize()
 	if sideClosed then
@@ -616,6 +661,8 @@ function bringBackOnResize()
 	):Play()
 end
 
+--- Drags gui (so long as mouse is held down)
+--- @param input InputObject
 function onBarInput(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		local lastPos = UserInputService.GetMouseLocation(UserInputService)
@@ -678,6 +725,7 @@ function onBarInput(input)
 	end
 end
 
+--- Fades out the table of elements (and makes them invisible), returns a function to make them visible again
 function fadeOut(elements)
 	local data = {}
 	for _, v in pairs(elements) do
@@ -732,6 +780,7 @@ function fadeOut(elements)
 	end
 end
 
+--- Expands and minimizes the gui (closed is the toggle boolean)
 function toggleMinimize(override)
 	if mainClosing and not override or maximized then
 		return
@@ -759,6 +808,7 @@ function toggleMinimize(override)
 	mainClosing = false
 end
 
+--- Expands and minimizes the sidebar (sideClosed is the toggle boolean)
 function toggleSideTray(override)
 	if sideClosing and not override or maximized then
 		return
@@ -786,6 +836,7 @@ function toggleSideTray(override)
 	sideClosing = false
 end
 
+--- Expands code box to fit screen for more convenient viewing
 function toggleMaximize()
 	if not sideClosed and not maximized then
 		maximized = true
@@ -795,10 +846,11 @@ function toggleMaximize()
 		disable.Size = UDim2.new(1, 0, 1, 0)
 		disable.BackgroundColor3 = Color3.new()
 		disable.BorderSizePixel = 0
-		disable.Text = 0
+		disable.Text = ""
 		disable.ZIndex = 3
 		disable.BackgroundTransparency = 1
 		disable.AutoButtonColor = false
+		disable.Parent = SimpleSpy2
 		CodeBox.ZIndex = 4
 		CodeBox.Position = prevPos
 		CodeBox.Size = prevSize
@@ -811,14 +863,19 @@ function toggleMaximize()
 			:Play()
 		TweenService:Create(disable, TweenInfo.new(0.5), { BackgroundTransparency = 0.5 }):Play()
 		disable.MouseButton1Click:Connect(function()
+			-- Logic to check if click was outside the CodeBox area for minimizng
+			local mousePos = UserInputService:GetMouseLocation()
+			local boxPos = CodeBox.AbsolutePosition
+			local boxSize = CodeBox.AbsoluteSize
+			
 			if
-				UserInputService:GetMouseLocation().Y + 36 >= CodeBox.AbsolutePosition.Y
-				and UserInputService:GetMouseLocation().Y + 36 <= CodeBox.AbsolutePosition.Y + CodeBox.AbsoluteSize.Y
-				and UserInputService:GetMouseLocation().X >= CodeBox.AbsolutePosition.X
-				and UserInputService:GetMouseLocation().X <= CodeBox.AbsolutePosition.X + CodeBox.AbsoluteSize.X
+				mousePos.Y + 36 >= boxPos.Y and mousePos.Y + 36 <= boxPos.Y + boxSize.Y
+				and mousePos.X >= boxPos.X and mousePos.X <= boxPos.X + boxSize.X
 			then
 				return
 			end
+			
+			-- Minimize
 			TweenService:Create(CodeBox, TweenInfo.new(0.5), { Size = prevSize, Position = prevPos }):Play()
 			TweenService:Create(disable, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
 			maximized = false
@@ -831,6 +888,7 @@ function toggleMaximize()
 	end
 end
 
+--- Adjusts the ui elements to the 'Maximized' size
 function maximizeSize(speed)
 	if not speed then
 		speed = 0.05
@@ -880,6 +938,7 @@ function maximizeSize(speed)
 		:Play()
 end
 
+--- Adjusts the ui elements to close the side
 function minimizeSize(speed)
 	if not speed then
 		speed = 0.05
@@ -927,6 +986,7 @@ function minimizeSize(speed)
 		:Play()
 end
 
+--- Ensures size is within screensize limitations
 function validateSize()
 	local x, y = Background.AbsoluteSize.X, Background.AbsoluteSize.Y
 	local screenSize = workspace.CurrentCamera.ViewportSize
@@ -946,6 +1006,7 @@ function validateSize()
 	Background.Size = UDim2.fromOffset(x, y)
 end
 
+--- Gets the player an instance is descended from
 function getPlayerFromInstance(instance)
 	for _, v in pairs(Players:GetPlayers()) do
 		if v.Character and (instance:IsDescendantOf(v.Character) or instance == v.Character) then
@@ -954,6 +1015,7 @@ function getPlayerFromInstance(instance)
 	end
 end
 
+--- Runs on MouseButton1Click of an event frame
 function eventSelect(frame)
 	if selected and selected.Log and selected.Log.Button then
 		TweenService
@@ -970,6 +1032,13 @@ function eventSelect(frame)
 		TweenService
 			:Create(frame.Button, TweenInfo.new(0.5), { BackgroundColor3 = Color3.fromRGB(92, 126, 229) })
 			:Play()
+        -- Set CodeBox to show the generated script, and exit Edit mode
+        if isCodeEditable then
+            isCodeEditable = false
+            codebox:setEditable(false)
+            -- Reset the Edit & Run button text
+            -- This assumes the button's text is managed by a variable or another function if necessary
+        end
 		codebox:setRaw(selected.GenScript)
 	end
 	if sideClosed then
@@ -977,14 +1046,19 @@ function eventSelect(frame)
 	end
 end
 
+--- Updates the canvas size to fit the current amount of function buttons
 function updateFunctionCanvas()
 	ScrollingFrame.CanvasSize = UDim2.fromOffset(UIGridLayout.AbsoluteContentSize.X, UIGridLayout.AbsoluteContentSize.Y)
 end
 
+--- Updates the canvas size to fit the amount of current remotes
 function updateRemoteCanvas()
 	LogList.CanvasSize = UDim2.fromOffset(UIListLayout.AbsoluteContentSize.X, UIListLayout.AbsoluteContentSize.Y)
 end
 
+--- Allows for toggling of the tooltip and easy setting of le description
+--- @param enable boolean
+--- @param text string
 function makeToolTip(enable, text)
 	if enable then
 		if ToolTip.Visible then
@@ -1016,6 +1090,7 @@ function makeToolTip(enable, text)
 			end
 		end)
 		TextLabel.Text = text
+		scaleToolTip() -- Added to scale tooltip size
 		ToolTip.Visible = true
 	else
 		if ToolTip.Visible then
@@ -1025,6 +1100,10 @@ function makeToolTip(enable, text)
 	end
 end
 
+--- Creates new function button (below codebox)
+--- @param name string
+---@param description function
+---@param onClick function
 function newButton(name, description, onClick)
 	local button = FunctionTemplate:Clone()
 	button.Text.Text = name
@@ -1042,12 +1121,23 @@ function newButton(name, description, onClick)
 	end)
 	button.Parent = ScrollingFrame
 	updateFunctionCanvas()
+    return button -- Return the button instance for potential dynamic updates
 end
 
+--- Adds new Remote to logs
+--- @param name string The name of the remote being logged
+--- @param type string The type of the remote being logged (either 'function' or 'event')
+--- @param args any
+--- @param remote any
+--- @param function_info string
+--- @param blocked any
 function newRemote(type, name, args, remote, function_info, blocked, src, returnValue)
+    -- Input Logs are special and use a different color
+    local isInputLog = type == "input"
+
 	local remoteFrame = RemoteTemplate:Clone()
 	remoteFrame.Text.Text = string.sub(name, 1, 50)
-	remoteFrame.ColorBar.BackgroundColor3 = type == "event" and Color3.new(255, 242, 0) or Color3.fromRGB(99, 86, 245)
+	remoteFrame.ColorBar.BackgroundColor3 = isInputLog and Color3.fromRGB(80, 200, 255) or (type == "event" and Color3.new(255, 242, 0) or Color3.fromRGB(99, 86, 245))
 	local id = Instance.new("IntValue")
 	id.Name = "ID"
 	id.Value = #logs + 1
@@ -1062,15 +1152,22 @@ function newRemote(type, name, args, remote, function_info, blocked, src, return
 		Source = src,
 		GenScript = "-- Generating, please wait... (click to reload)\n-- (If this message persists, the remote args are likely extremely long)",
 		ReturnValue = returnValue,
+        IsInputLog = isInputLog,
 	}
 	logs[#logs + 1] = log
-	schedule(function()
-		log.GenScript = genScript(remote, args)
-		if blocked then
-			logs[#logs].GenScript = "-- THIS REMOTE WAS PREVENTED FROM FIRING THE SERVER BY SIMPLESPY\n\n"
-				.. logs[#logs].GenScript
-		end
-	end)
+    if not isInputLog then
+        schedule(function()
+            log.GenScript = genScript(remote, args)
+            if blocked then
+                logs[#logs].GenScript = "-- THIS REMOTE WAS PREVENTED FROM FIRING THE SERVER BY SIMPLESPY\n\n"
+                    .. logs[#logs].GenScript
+            end
+        end)
+    else
+        -- For Input logs, GenScript is just the info string
+        log.GenScript = table.concat(args, "\n")
+    end
+
 	local connect = remoteFrame.Button.MouseButton1Click:Connect(function()
 		eventSelect(remoteFrame)
 	end)
@@ -1085,6 +1182,7 @@ function newRemote(type, name, args, remote, function_info, blocked, src, return
 	updateRemoteCanvas()
 end
 
+--- Generates a script from the provided arguments (first has to be remote path)
 function genScript(remote, args)
 	prevTables = {}
 	local gen = ""
@@ -1143,13 +1241,16 @@ function genScript(remote, args)
 	return gen
 end
 
+--- value-to-string: value, string (out), level (indentation), parent table, var name, is from tovar
 function v2s(v, l, p, n, vtv, i, pt, path, tables, tI)
 	if not tI then
 		tI = { 0 }
 	else
 		tI[1] += 1
 	end
-	if not path then path = "" end
+	if not path then -- sets path to empty string (so it doesn't have to manually provided every time)
+		path = ""
+	end
 	if typeof(v) == "number" then
 		if v == math.huge then
 			return "math.huge"
@@ -1178,6 +1279,8 @@ function v2s(v, l, p, n, vtv, i, pt, path, tables, tI)
 	end
 end
 
+--- value-to-variable
+--- @param t any
 function v2v(t)
 	topstr = ""
 	bottomstr = ""
@@ -1221,25 +1324,36 @@ function v2v(t)
 	return ret
 end
 
+--- table-to-string
+--- @param t table
+--- @param l number
+--- @param p table
+--- @param n string
+--- @param vtv boolean
+--- @param i any
+--- @param pt table
+--- @param path string
+--- @param tables table
+--- @param tI table
 function t2s(t, l, p, n, vtv, i, pt, path, tables, tI)
-	local globalIndex = table.find(getgenv(), t)
+	local globalIndex = table.find(getgenv(), t) -- checks if table is a global
 	if type(globalIndex) == "string" then
 		return globalIndex
 	end
 	if not tI then
 		tI = { 0 }
 	end
-	if not path then
+	if not path then -- sets path to empty string (so it doesn't have to manually provided every time)
 		path = ""
 	end
-	if not l then
+	if not l then -- sets the level to 0 (for indentation) and tables for logging tables it already serialized
 		l = 0
 		tables = {}
 	end
-	if not p then
+	if not p then -- p is the previous table but doesn't really matter if it's the first
 		p = t
 	end
-	for _, v in pairs(tables) do
+	for _, v in pairs(tables) do -- checks if the current table has been serialized before
 		if n and rawequal(v, t) then
 			bottomstr = bottomstr
 				.. "\n"
@@ -1251,12 +1365,12 @@ function t2s(t, l, p, n, vtv, i, pt, path, tables, tI)
 			return "{} --[[DUPLICATE]]"
 		end
 	end
-	table.insert(tables, t)
-	local s = "{"
+	table.insert(tables, t) -- logs table to past tables
+	local s = "{" -- start of serialization
 	local size = 0
-	l = l + indent
-	for k, v in pairs(t) do
-		size = size + 1
+	l = l + indent -- set indentation level
+	for k, v in pairs(t) do -- iterates over table
+		size = size + 1 -- changes size for max limit
 		if size > (_G.SimpleSpyMaxTableSize or 1000) then
 			s = s
 				.. "\n"
@@ -1264,7 +1378,7 @@ function t2s(t, l, p, n, vtv, i, pt, path, tables, tI)
 				.. "-- MAXIMUM TABLE SIZE REACHED, CHANGE '_G.SimpleSpyMaxTableSize' TO ADJUST MAXIMUM SIZE "
 			break
 		end
-		if rawequal(k, t) then
+		if rawequal(k, t) then -- checks if the table being iterated over is being used as an index within itself (yay, lua)
 			bottomstr = bottomstr
 				.. "\n"
 				.. tostring(n)
@@ -1281,8 +1395,8 @@ function t2s(t, l, p, n, vtv, i, pt, path, tables, tI)
 			size -= 1
 			continue
 		end
-		local currentPath = ""
-		if type(k) == "string" and k:match("^[%a_]+[%w_]*$") then
+		local currentPath = "" -- initializes the path of 'v' within 't'
+		if type(k) == "string" and k:match("^[%a_]+[%w_]*$") then -- cleanly handles table path generation (for the first half)
 			currentPath = "." .. k
 		else
 			currentPath = "[" .. k2s(k, l, p, n, vtv, k, t, path .. currentPath, tables, tI) .. "]"
@@ -1290,6 +1404,7 @@ function t2s(t, l, p, n, vtv, i, pt, path, tables, tI)
 		if size % 100 == 0 then
 			scheduleWait()
 		end
+		-- actually serializes the member of the table
 		s = s
 			.. "\n"
 			.. string.rep(" ", l)
@@ -1299,15 +1414,16 @@ function t2s(t, l, p, n, vtv, i, pt, path, tables, tI)
 			.. v2s(v, l, p, n, vtv, k, t, path .. currentPath, tables, tI)
 			.. ","
 	end
-	if #s > 1 then
+	if #s > 1 then -- removes the last comma because it looks nicer (no way to tell if it's done 'till it's done so...)
 		s = s:sub(1, #s - 1)
 	end
-	if size > 0 then
+	if size > 0 then -- cleanly indents the last curly bracket
 		s = s .. "\n" .. string.rep(" ", l - indent)
 	end
 	return s .. "}"
 end
 
+--- key-to-string
 function k2s(v, ...)
 	if keyToString then
 		if typeof(v) == "userdata" and getrawmetatable(v) then
@@ -1326,6 +1442,7 @@ function k2s(v, ...)
 	return v2s(v, ...)
 end
 
+--- function-to-string
 function f2s(f)
 	for k, x in pairs(getgenv()) do
 		local isgucci, gpath
@@ -1348,6 +1465,8 @@ function f2s(f)
 	return "function()end --[[" .. tostring(f) .. "]]"
 end
 
+--- instance-to-path
+--- @param i userdata
 function i2p(i)
 	local player = getplayer(i)
 	local parent = i
@@ -1407,6 +1526,8 @@ function i2p(i)
 	end
 end
 
+--- userdata-to-string: userdata
+--- @param u userdata
 function u2s(u)
 	if typeof(u) == "TweenInfo" then
 		-- TweenInfo
@@ -1535,6 +1656,7 @@ function u2s(u)
 	end
 end
 
+--- Gets the player an instance is descended from
 function getplayer(instance)
 	for _, v in pairs(Players:GetPlayers()) do
 		if v.Character and (instance:IsDescendantOf(v.Character) or instance == v.Character) then
@@ -1543,6 +1665,7 @@ function getplayer(instance)
 	end
 end
 
+--- value-to-path (in table)
 function v2p(x, t, path, prev)
 	if not path then
 		path = ""
@@ -1585,6 +1708,7 @@ function v2p(x, t, path, prev)
 	return false, ""
 end
 
+--- format s: string, byte encrypt (for weird symbols)
 function formatstr(s, indentation)
 	if not indentation then
 		indentation = 0
@@ -1600,6 +1724,7 @@ function formatstr(s, indentation)
 		)
 end
 
+--- Adds \'s to the text as a replacement to whitespace chars and other things because string.format can't yayeet
 function handlespecials(value, indentation)
 	local buildStr = {}
 	local i = 1
@@ -1627,9 +1752,10 @@ function handlespecials(value, indentation)
 			i += 3
 		end
 	end
-	return table.concat(buildStr)
+	return table.concat(buildStr), i > (_G.SimpleSpyMaxStringSize or 1000)
 end
 
+-- safe (ish) tostring
 function safetostring(v: any)
 	if typeof(v) == "userdata" or type(v) == "table" then
 		local mt = getrawmetatable(v)
@@ -1644,6 +1770,8 @@ function safetostring(v: any)
 	return tostring(v)
 end
 
+--- finds script from 'src' from getinfo, returns nil if not found
+--- @param src string
 function getScriptFromSrc(src)
 	local realPath
 	local runningTest
@@ -1694,10 +1822,12 @@ function getScriptFromSrc(src)
 	return realPath
 end
 
+--- schedules the provided function (and calls it with any args after)
 function schedule(f, ...)
 	table.insert(scheduled, { f, ... })
 end
 
+--- yields the current thread until the scheduler gives the ok
 function scheduleWait()
 	local thread = coroutine.running()
 	schedule(function()
@@ -1706,6 +1836,7 @@ function scheduleWait()
 	coroutine.yield()
 end
 
+--- the big (well tbh small now) boi task scheduler himself, handles p much anything as quicc as possible
 function taskscheduler()
 	if not toggle then
 		scheduled = {}
@@ -1723,6 +1854,7 @@ function taskscheduler()
 	end
 end
 
+--- Handles remote logs
 function remoteHandler(hookfunction, methodName, remote, args, funcInfo, calling, returnValue)
 	local validInstance, validClass = pcall(function()
 		return remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")
@@ -1798,6 +1930,7 @@ function remoteHandler(hookfunction, methodName, remote, args, funcInfo, calling
 	end
 end
 
+--- Used for hookfunction
 function hookRemote(remoteType, remote, ...)
 	if typeof(remote) == "Instance" then
 		local args = { ... }
@@ -1940,6 +2073,7 @@ local newInvokeServer = newcclosure(function(...)
 	return hookRemote("RemoteFunction", ...)
 end, originalFunction)
 
+--- Toggles on and off the remote spy
 function toggleSpy()
 	if not toggle then
 		if hookmetamethod then
@@ -1980,15 +2114,92 @@ function toggleSpy()
 	end
 end
 
+--- Toggles between the two remotespy methods (hookfunction currently = disabled)
 function toggleSpyMethod()
 	toggleSpy()
 	toggle = not toggle
 end
 
+--- --- Player Input Spy Implementation ---
+
+local inputConnections = {}
+function logInput(input, gameProcessed)
+    if not isInputSpying or gameProcessed then return end
+    
+    local typeStr = tostring(input.UserInputType)
+    local stateStr = tostring(input.UserInputState)
+
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        typeStr = "Keyboard (" .. tostring(input.KeyCode) .. ")"
+    elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+        typeStr = "Mouse1"
+    elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
+        typeStr = "Mouse2"
+    elseif input.UserInputType == Enum.UserInputType.Touch then
+        typeStr = "Touch"
+    end
+    
+    local logName = "Input: " .. typeStr .. " - " .. stateStr
+    local logArgs = {
+        "Type: " .. typeStr,
+        "State: " .. stateStr,
+        "Game Processed: " .. tostring(gameProcessed),
+        "Position: " .. tostring(input.Position),
+        "Delta: " .. tostring(input.Delta),
+        "Time: " .. tostring(os.time())
+    }
+
+    newRemote("input", logName, logArgs, nil, nil, nil, nil)
+end
+
+function toggleInputSpy()
+    isInputSpying = not isInputSpying
+    if isInputSpying then
+        -- Connect to input events
+        local inputBeganConn = UserInputService.InputBegan:Connect(logInput)
+        local inputEndedConn = UserInputService.InputEnded:Connect(logInput)
+        table.insert(inputConnections, inputBeganConn)
+        table.insert(inputConnections, inputEndedConn)
+        print("Input Spy ENABLED")
+    else
+        -- Disconnect input events
+        for _, conn in ipairs(inputConnections) do
+            conn:Disconnect()
+        end
+        inputConnections = {}
+        print("Input Spy DISABLED")
+    end
+end
+
+--- Toggles the CodeBox editing mode
+function toggleCodeEdit(button)
+    isCodeEditable = not isCodeEditable
+    codebox:setEditable(isCodeEditable)
+
+    if isCodeEditable then
+        button.Text.Text = "Run Code"
+        makeToolTip(true, "CodeBox is now in Edit mode. Click to EXECUTE the modified code.")
+    else
+        button.Text.Text = "Edit & Run"
+        if selected and selected.GenScript then
+             -- Save edited code back to selected log, or just revert to the original if no execution happened
+             selected.GenScript = codebox:getString()
+        end
+        makeToolTip(true, "Edit mode disabled. Click to ENABLE Edit mode and modify/execute the script.")
+    end
+end
+
+--- Shuts down the remote spy
 function shutdown()
 	if schedulerconnect then
 		schedulerconnect:Disconnect()
 	end
+    -- Disconnect input spy connections
+    for _, conn in ipairs(inputConnections) do
+        conn:Disconnect()
+    end
+    inputConnections = {}
+
 	for _, connection in pairs(connections) do
 		coroutine.wrap(function()
 			connection:Disconnect()
@@ -2008,56 +2219,6 @@ function shutdown()
 		setreadonly(gm, true)
 	end
 	_G.SimpleSpyExecuted = false
-end
-
--- OMEGA HACKER FUNCTIONS
--- Toggles the editability of the code box
-function toggleCodeBoxEdit()
-	codeboxEditable = not codeboxEditable
-	codebox:setEditable(codeboxEditable)
-end
-
--- Saves the current content of the code box to the selected remote's GenScript field
-function saveCodeBoxChanges()
-	if selected then
-		selected.GenScript = codebox:getString()
-	end
-end
-
--- Logs player movement (CFrame/Position) to a special log section
-function logPlayerMovement(dt)
-	local localPlayer = Players.LocalPlayer
-	if localPlayer and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
-		local hRoot = localPlayer.Character.HumanoidRootPart
-		local currentPos = hRoot.Position
-		local logEntry = string.format("MOVE_LOG: Tick: %s, Pos: (%.3f, %.3f, %.3f)", tostring(tick()), currentPos.X, currentPos.Y, currentPos.Z)
-		table.insert(playerActions, logEntry)
-	end
-end
-
--- Logs player key and mouse input
-function onInputBegan(input, gameProcessedEvent)
-    if gameProcessedEvent then return end
-
-    local action = nil
-    local timestamp = tostring(tick())
-
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        action = string.format("MOUSE_CLICK: Left at: (%.0f, %.0f)", input.Position.X, input.Position.Y)
-    elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
-        action = string.format("MOUSE_CLICK: Right at: (%.0f, %.0f)", input.Position.X, input.Position.Y)
-    elseif input.UserInputType == Enum.UserInputType.Keyboard then
-        action = string.format("KEY_PRESS: Key: %s", tostring(input.KeyCode))
-    end
-    
-    if action then
-        table.insert(playerActions, string.format("INPUT_LOG: Tick: %s, %s", timestamp, action))
-    end
-end
-
--- Displays Player Action logs in the CodeBox
-function showPlayerActionLog()
-	codebox:setRaw("--== PLAYER ACTION LOGS (KEY/MOUSE/MOVE) ==--\n\n" .. table.concat(playerActions, "\n"))
 end
 
 -- main
@@ -2107,12 +2268,7 @@ if not _G.SimpleSpyExecuted then
 		FunctionTemplate.Parent = nil
 		codebox = Highlight.new(CodeBox)
 		codebox:setRaw("")
-        -- Set CodeBox as multiline input for editing
-        if typeof(codebox.textbox) == "Instance" then
-            codebox.textbox.MultiLine = true
-            codebox.textbox.TextEditable = false -- Start as read-only
-        end
-        
+        codebox:setEditable(false) -- Initial state is not editable
 		getgenv().SimpleSpy = SimpleSpy
 		getgenv().getNil = function(name, class)
 			for _, v in pairs(getnilinstances()) do
@@ -2131,14 +2287,9 @@ if not _G.SimpleSpyExecuted then
 		Simple.MouseEnter:Connect(onToggleButtonHover)
 		Simple.MouseLeave:Connect(onToggleButtonUnhover)
 		CloseButton.MouseButton1Click:Connect(shutdown)
-		table.insert(connections, UserInputService.InputBegan:Connect(backgroundUserInput))
-        
-        -- OMEGA HACKER INPUT HOOKS
-        table.insert(connections, UserInputService.InputBegan:Connect(onInputBegan))
-        local hrpTracker
-        hrpTracker = RunService.Heartbeat:Connect(logPlayerMovement)
-        table.insert(connections, hrpTracker)
-        
+        -- Assuming backgroundUserInput is defined elsewhere or not strictly needed for basic drag function.
+        -- If it's a function that handles user input on the main frame, you should connect it here.
+		-- table.insert(connections, UserInputService.InputBegan:Connect(backgroundUserInput)) 
 		connectResize()
 		SimpleSpy2.Enabled = true
 		coroutine.wrap(function()
@@ -2158,7 +2309,8 @@ if not _G.SimpleSpyExecuted then
 		end
 		Mouse = Players.LocalPlayer:GetMouse()
 		oldIcon = Mouse.Icon
-		table.insert(connections, Mouse.Move:Connect(mouseMoved))
+        -- Assuming mouseMoved is defined elsewhere or not strictly needed
+		-- table.insert(connections, Mouse.Move:Connect(mouseMoved)) 
 	end)
 	if not succeeded then
 		warn(
@@ -2185,7 +2337,43 @@ else
 end
 
 ----- ADD ONS ----- (easily add or remove additonal functionality to the RemoteSpy!)
--- ... (Existing Add-ons)
+
+-- *** MODIFIED BUTTON: Edit & Run ***
+local editAndRunButton
+editAndRunButton = newButton("Edit & Run", function()
+	return isCodeEditable and "Click to EXECUTE the modified code." or "Click to ENABLE Edit mode for the current script."
+end, function(button)
+	if isCodeEditable then
+		TextLabel.Text = "Executing modified code..."
+		local codeToRun = codebox:getString()
+		local succeeded, result = pcall(function()
+			return loadstring(codeToRun)()
+		end)
+		if succeeded then
+			TextLabel.Text = "Executed successfully!"
+		else
+			TextLabel.Text = "Execution error: " .. tostring(result)
+		end
+        
+        -- Optionally: auto-toggle off edit mode after execution
+        if succeeded then
+            toggleCodeEdit(button)
+        end
+	else
+		toggleCodeEdit(button)
+	end
+end)
+
+-- *** NEW BUTTON: Toggle Input Spy ***
+local inputSpyButton
+inputSpyButton = newButton("Toggle Input Spy", function()
+    return isInputSpying and "Click to DISABLE logging of player inputs (Keyboard, Mouse, Touch)." or "Click to ENABLE logging of player inputs (Keyboard, Mouse, Touch). Logs will appear in the main list with a blue bar."
+end, function(button)
+    toggleInputSpy()
+    button.Text.Text = isInputSpying and "Input Spy (ON)" or "Input Spy (OFF)"
+    TextLabel.Text = isInputSpying and "Input Spy ENABLED." or "Input Spy DISABLED."
+end)
+inputSpyButton.Text.Text = "Input Spy (OFF)" -- Initial text
 
 -- Copies the contents of the codebox
 newButton("Copy Code", function()
@@ -2195,54 +2383,60 @@ end, function()
 	TextLabel.Text = "Copied successfully!"
 end)
 
+-- Executes the contents of the codebox through loadstring
+newButton("Run Code (Old)", function()
+	return "Click to execute code"
+end, function()
+	local orText = "Click to execute code"
+	TextLabel.Text = "Executing..."
+	local succeeded = pcall(function()
+		return loadstring(codebox:getString())()
+	end)
+	if succeeded then
+		TextLabel.Text = "Executed successfully!"
+	else
+		TextLabel.Text = "Execution error!"
+	end
+end)
+
 --- Copies the source script (that fired the remote)
 newButton("Copy Remote", function()
 	return "Click to copy the path of the remote"
 end, function()
-	if selected then
+	if selected and not selected.IsInputLog then
 		setclipboard(v2s(selected.Remote.remote))
 		TextLabel.Text = "Copied!"
-	end
-end)
-
--- Executes the contents of the codebox through loadstring
-newButton("Run Code", function()
-    return "Click to execute the code currently in the CodeBox."
-end, function()
-    local codeToRun = codebox:getString()
-	TextLabel.Text = "Executing Payload..."
-	local succeeded, err = pcall(function()
-		return loadstring(codeToRun)()
-	end)
-	if succeeded then
-		TextLabel.Text = "Payload Executed: Success."
 	else
-		TextLabel.Text = "Payload Execution Error: " .. tostring(err)
-	end
+        TextLabel.Text = "Select a Remote Event/Function log first!"
+    end
 end)
 
 --- Gets the calling script (not super reliable but w/e)
 newButton("Get Script", function()
 	return "Click to copy calling script to clipboard\nWARNING: Not super reliable, nil == could not find"
 end, function()
-	if selected then
+	if selected and not selected.IsInputLog then
 		setclipboard(SimpleSpy:ValueToString(selected.Source))
 		TextLabel.Text = "Done!"
-	end
+	else
+        TextLabel.Text = "Select a Remote Event/Function log first!"
+    end
 end)
 
 --- Decompiles the script that fired the remote and puts it in the code box
 newButton("Function Info", function()
 	return "Click to view calling function information"
 end, function()
-	if selected then
+	if selected and not selected.IsInputLog then
 		if selected.Function then
 			codebox:setRaw(
 				"-- Calling function info\n-- Generated by the SimpleSpy serializer\n\n" .. tostring(selected.Function)
 			)
 		end
 		TextLabel.Text = "Done! Function info generated by the SimpleSpy Serializer."
-	end
+	else
+        TextLabel.Text = "Select a Remote Event/Function log first!"
+    end
 end)
 
 --- Clears the Remote logs
@@ -2265,20 +2459,24 @@ end)
 newButton("Exclude (i)", function()
 	return "Click to exclude this Remote.\nExcluding a remote makes SimpleSpy ignore it, but it will continue to be usable."
 end, function()
-	if selected then
+	if selected and not selected.IsInputLog and selected.Remote.remote then
 		blacklist[selected.Remote.remote] = true
 		TextLabel.Text = "Excluded!"
-	end
+	else
+        TextLabel.Text = "Select a Remote Event/Function log first!"
+    end
 end)
 
 --- Excludes all Remotes that share the same name as the selected.Log remote from the RemoteSpy
 newButton("Exclude (n)", function()
 	return "Click to exclude all remotes with this name.\nExcluding a remote makes SimpleSpy ignore it, but it will continue to be usable."
 end, function()
-	if selected then
+	if selected and not selected.IsInputLog then
 		blacklist[selected.Name] = true
 		TextLabel.Text = "Excluded!"
-	end
+	else
+        TextLabel.Text = "Select a Remote Event/Function log first!"
+    end
 end)
 
 --- clears blacklist
@@ -2293,24 +2491,28 @@ end)
 newButton("Block (i)", function()
 	return "Click to stop this remote from firing.\nBlocking a remote won't remove it from SimpleSpy logs, but it will not continue to fire the server."
 end, function()
-	if selected then
+	if selected and not selected.IsInputLog then
 		if selected.Remote.remote then
 			blocklist[selected.Remote.remote] = true
 			TextLabel.Text = "Excluded!"
 		else
 			TextLabel.Text = "Error! Instance may no longer exist, try using Block (n)."
 		end
-	end
+	else
+        TextLabel.Text = "Select a Remote Event/Function log first!"
+    end
 end)
 
 --- Prevents all remotes from firing that share the same name as the selected.Log remote from the RemoteSpy (still logged)
 newButton("Block (n)", function()
 	return "Click to stop remotes with this name from firing.\nBlocking a remote won't remove it from SimpleSpy logs, but it will not continue to fire the server."
 end, function()
-	if selected then
+	if selected and not selected.IsInputLog then
 		blocklist[selected.Name] = true
 		TextLabel.Text = "Excluded!"
-	end
+	else
+        TextLabel.Text = "Select a Remote Event/Function log first!"
+    end
 end)
 
 --- clears blacklist
@@ -2325,14 +2527,16 @@ end)
 newButton("Decompile", function()
 	return "Attempts to decompile source script\nWARNING: Not super reliable, nil == could not find"
 end, function()
-	if selected then
+	if selected and not selected.IsInputLog then
 		if selected.Source then
 			codebox:setRaw(decompile(selected.Source))
 			TextLabel.Text = "Done!"
 		else
 			TextLabel.Text = "Source not found!"
 		end
-	end
+	else
+        TextLabel.Text = "Select a Remote Event/Function log first!"
+    end
 end)
 
 newButton("Disable Info", function()
@@ -2340,8 +2544,9 @@ newButton("Disable Info", function()
 		"[%s] Toggle function info (because it can cause lag in some games)",
 		funcEnabled and "ENABLED" or "DISABLED"
 	)
-end, function()
+end, function(button)
 	funcEnabled = not funcEnabled
+    button.Text.Text = funcEnabled and "Disable Info (ON)" or "Disable Info (OFF)"
 	TextLabel.Text = string.format(
 		"[%s] Toggle function info (because it can cause lag in some games)",
 		funcEnabled and "ENABLED" or "DISABLED"
@@ -2353,8 +2558,9 @@ newButton("Autoblock", function()
 		"[%s] [BETA] Intelligently detects and excludes spammy remote calls from logs",
 		autoblock and "ENABLED" or "DISABLED"
 	)
-end, function()
+end, function(button)
 	autoblock = not autoblock
+    button.Text.Text = autoblock and "Autoblock (ON)" or "Autoblock (OFF)"
 	TextLabel.Text = string.format(
 		"[%s] [BETA] Intelligently detects and excludes spammy remote calls from logs",
 		autoblock and "ENABLED" or "DISABLED"
@@ -2368,8 +2574,9 @@ newButton("CallingScript", function()
 		"[%s] [UNSAFE] Uses 'getcallingscript' to get calling script for Decompile and GetScript. Much more reliable, but opens up SimpleSpy to detection and/or instability.",
 		useGetCallingScript and "ENABLED" or "DISABLED"
 	)
-end, function()
+end, function(button)
 	useGetCallingScript = not useGetCallingScript
+    button.Text.Text = useGetCallingScript and "CallingScript (ON)" or "CallingScript (OFF)"
 	TextLabel.Text = string.format(
 		"[%s] [UNSAFE] Uses 'getcallingscript' to get calling script for Decompile and GetScript. Much more reliable, but opens up SimpleSpy to detection and/or instability.",
 		useGetCallingScript and "ENABLED" or "DISABLED"
@@ -2381,8 +2588,9 @@ newButton("KeyToString", function()
 		"[%s] [BETA] Uses an experimental new function to replicate Roblox's behavior when a non-primitive type is used as a key in a table. Still in development and may not properly reflect tostringed (empty) userdata.",
 		keyToString and "ENABLED" or "DISABLED"
 	)
-end, function()
+end, function(button)
 	keyToString = not keyToString
+    button.Text.Text = keyToString and "KeyToString (ON)" or "KeyToString (OFF)"
 	TextLabel.Text = string.format(
 		"[%s] [BETA] Uses an experimental new function to replicate Roblox's behavior when a non-primitive type is used as a key in a table. Still in development and may not properly reflect tostringed (empty) userdata.",
 		keyToString and "ENABLED" or "DISABLED"
@@ -2394,8 +2602,9 @@ newButton("ToggleReturnValues", function()
 		"[%s] [EXPERIMENTAL] Enables recording of return values for 'GetReturnValue'\n\nUse this method at your own risk, as it could be detectable.",
 		recordReturnValues and "ENABLED" or "DISABLED"
 	)
-end, function()
+end, function(button)
 	recordReturnValues = not recordReturnValues
+    button.Text.Text = recordReturnValues and "ReturnValues (ON)" or "ReturnValues (OFF)"
 	TextLabel.Text = string.format(
 		"[%s] [EXPERIMENTAL] Enables recording of return values for 'GetReturnValue'\n\nUse this method at your own risk, as it could be detectable.",
 		recordReturnValues and "ENABLED" or "DISABLED"
@@ -2405,37 +2614,9 @@ end)
 newButton("GetReturnValue", function()
 	return "[Experimental] If 'ReturnValues' is enabled, this will show the recorded return value for the RemoteFunction (if available)."
 end, function()
-	if selected then
+	if selected and not selected.IsInputLog then
 		codebox:setRaw(SimpleSpy:ValueToVar(selected.ReturnValue, "returnValue"))
-	end
-end)
-
--- OMEGA HACKER ADDED BUTTONS FOR CODE EDITING
-newButton("Enable Edit", function()
-    return string.format("[%s] Toggles the editability of the CodeBox (read/write)", codeboxEditable and "ENABLED" or "DISABLED")
-end, function()
-    toggleCodeBoxEdit()
-    if codebox.textbox then
-        codebox.textbox.TextEditable = codeboxEditable
+	else
+         TextLabel.Text = "Select a Remote Function log first!"
     end
-    TextLabel.Text = string.format("CodeBox Edit: %s", codeboxEditable and "ENABLED" or "DISABLED")
-end)
-
-newButton("Save Changes", function()
-    return "Saves the current text in the CodeBox back to the selected Remote's GenScript. Requires Edit Mode."
-end, function()
-    if codeboxEditable then
-        saveCodeBoxChanges()
-        TextLabel.Text = "Changes Saved to Selected Remote's Payload."
-    else
-        TextLabel.Text = "Error: Enable Edit Mode First."
-    end
-end)
-
--- OMEGA HACKER ADDED BUTTON FOR PLAYER ACTIONS
-newButton("Player Actions", function()
-    return "Displays the recorded log of player key presses, mouse clicks, and movement coordinates."
-end, function()
-    showPlayerActionLog()
-    TextLabel.Text = string.format("Displaying %d Player Action Logs.", #playerActions)
 end)
